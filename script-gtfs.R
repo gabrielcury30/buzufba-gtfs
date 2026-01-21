@@ -67,43 +67,65 @@ calendar <- tibble::tibble(
   start_date = "20260101", 
   end_date = "20261231")
 
+# --- 5. TRIPS & STOP_TIMES (VERSÃO MATEMÁTICA - CORREÇÃO DO 21:00) ---
 gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, sequencia_stops) {
   
   if(length(horarios) == 0) return(NULL)
   
   mins_inter_stop <- 3 
   
+  # Cria tabela base de viagens
   trips <- tibble::tibble(
     route_id = route_id,
     service_id = service_id,
     trip_id = paste(route_id, service_id, direction_id, gsub(":", "", horarios), sep = "_"),
-    direction_id = direction_id
+    direction_id = direction_id,
+    hora_origem = horarios # Guardamos o horário original para referência
   )
   
-  stop_times <- trips %>%
-    dplyr::select(trip_id) %>%
-    dplyr::mutate(
-      stop_id = list(sequencia_stops),
-      stop_sequence = list(seq_along(sequencia_stops)),
-      offset_minutos = list((seq_along(sequencia_stops) - 1) * mins_inter_stop)
-    ) %>%
-    tidyr::unnest(cols = c(stop_id, stop_sequence, offset_minutos))
+  stop_times_list <- list()
   
-  base_times <- tibble::tibble(
-    trip_id = trips$trip_id,
-    hora_base = lubridate::hm(horarios)
-  )
+  for(i in seq_len(nrow(trips))) {
+    t_id <- trips$trip_id[i]
+    h_str <- trips$hora_origem[i] # Ex: "06:10"
+    
+    # 1. Converte "HH:MM" para minutos totais desde meia-noite
+    parts <- as.numeric(strsplit(h_str, ":")[[1]])
+    minutos_iniciais <- parts[1] * 60 + parts[2]
+    
+    # 2. Gera a sequência de minutos para cada parada
+    # (0, 3, 6, 9...)
+    offsets <- (seq_along(sequencia_stops) - 1) * mins_inter_stop
+    
+    # 3. Soma
+    minutos_chegada <- minutos_iniciais + offsets
+    
+    # 4. Converte de volta para HH:MM:SS
+    horas_finais <- floor(minutos_chegada / 60)
+    minutos_finais <- minutos_chegada %% 60
+    segundos_finais <- 0
+    
+    # Formata com zeros à esquerda (Ex: 6 vira 06)
+    tempos_formatados <- sprintf("%02d:%02d:%02d", horas_finais, minutos_finais, segundos_finais)
+    
+    # Cria o dataframe
+    df_temp <- tibble::tibble(
+      trip_id = t_id,
+      arrival_time = tempos_formatados,
+      departure_time = tempos_formatados,
+      stop_id = sequencia_stops,
+      stop_sequence = seq_along(sequencia_stops)
+    )
+    stop_times_list[[i]] <- df_temp
+  }
   
-  stop_times <- stop_times %>%
-    dplyr::left_join(base_times, by = "trip_id") %>%
-    dplyr::mutate(
-      arrival_time_obj = hora_base + lubridate::minutes(offset_minutos),
-      arrival_time = sprintf("%02d:%02d:00", hour(arrival_time_obj), minute(arrival_time_obj)),
-      departure_time = arrival_time
-    ) %>%
-    dplyr::select(trip_id, arrival_time, departure_time, stop_id, stop_sequence)
+  # Consolida
+  stop_times_final <- dplyr::bind_rows(stop_times_list)
   
-  return(list(trips = trips, stop_times = stop_times))
+  # Remove a coluna auxiliar antes de retornar
+  trips <- trips %>% select(-hora_origem)
+  
+  return(list(trips = trips, stop_times = stop_times_final))
 }
 
 remover_sao_lazaro <- function(seq) { return(setdiff(seq, "SAO_LAZARO")) }
