@@ -2,6 +2,37 @@ library(gtfstools)
 library(tidyverse)
 library(lubridate)
 library(data.table)
+library(osrm)
+library(sf)
+
+# Função auxiliar para gerar o shape via OSRM
+gerar_shape_via_api <- function(shape_id, sequencia_stops, df_stops) {
+  message(paste("Gerando shape:", shape_id, "..."))
+  
+  # Filtra as paradas dessa rota na ordem correta
+  # O match garante que a ordem da sequencia_stops seja respeitada
+  coords <- df_stops[match(sequencia_stops, df_stops$stop_id), ]
+  
+  # Solicita a rota ao OSRM
+  # OSRM espera c(lon, lat)
+  rota_sf <- osrm::osrmRoute(
+    loc = coords[, c("stop_lon", "stop_lat")], 
+    overview = "full"
+  )
+  
+  # Extrai as coordenadas da geometria retornada
+  pts <- sf::st_coordinates(rota_sf)
+  
+  # Cria a tabela no formato shapes.txt
+  df_shape <- data.table::data.table(
+    shape_id = shape_id,
+    shape_pt_lat = pts[, "Y"],
+    shape_pt_lon = pts[, "X"],
+    shape_pt_sequence = 1:nrow(pts)
+  )
+  
+  return(df_shape)
+}
 
 options(scipen = 999)
 
@@ -68,11 +99,11 @@ calendar <- tibble::tibble(
   end_date = "20261231")
 
 # --- 5. TRIPS & STOP_TIMES (VERSÃO MATEMÁTICA - CORREÇÃO DO 21:00) ---
-gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, sequencia_stops) {
+gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, sequencia_stops, shape_id) {
   
   if(length(horarios) == 0) return(NULL)
   
-  mins_inter_stop <- 3 
+  mins_inter_stop <- 3 # ALTERAR DEPOIS CASO NECESSARIO 
   
   # Cria tabela base de viagens
   trips <- tibble::tibble(
@@ -80,6 +111,7 @@ gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, seque
     service_id = service_id,
     trip_id = paste(route_id, service_id, direction_id, gsub(":", "", horarios), sep = "_"),
     direction_id = direction_id,
+    shape_id = shape_id,
     hora_origem = horarios # Guardamos o horário original para referência
   )
   
@@ -180,41 +212,78 @@ h_b5_dia   <- h_b5_full[h_b5_full < "17:45"]
 h_b5_noite <- h_b5_full[h_b5_full >= "17:45"]
 h_b5_sab   <- h_b5_full[1:which(h_b5_full == "14:35")]
 
+# --- GERAÇÃO DOS SHAPES  ---
+
+# Convertemos stops para data.frame normal para facilitar o uso na função
+stops_df <- as.data.frame(stops)
+
+# Lista de shapes únicos que precisamos gerar
+# Note que estamos reaproveitando as variaveis de sequencia
+lista_shapes <- list(
+  gerar_shape_via_api("SHP_B1_IDA",       seq_b1_ida,         stops_df),
+  gerar_shape_via_api("SHP_B1_VOLTA",     seq_b1_volta,       stops_df),
+  gerar_shape_via_api("SHP_B1_IDA_N",     seq_b1_ida_noite,   stops_df),
+  gerar_shape_via_api("SHP_B1_VOLTA_N",   seq_b1_volta_noite, stops_df),
+  
+  gerar_shape_via_api("SHP_B2_IDA",       seq_b2_ida,         stops_df),
+  gerar_shape_via_api("SHP_B2_VOLTA",     seq_b2_volta,       stops_df),
+  gerar_shape_via_api("SHP_B2_IDA_N",     seq_b2_ida_noite,   stops_df),
+  gerar_shape_via_api("SHP_B2_VOLTA_N",   seq_b2_volta_noite, stops_df),
+  
+  gerar_shape_via_api("SHP_B3_IDA",       seq_b3_ida,         stops_df),
+  gerar_shape_via_api("SHP_B3_VOLTA",     seq_b3_volta,       stops_df),
+  gerar_shape_via_api("SHP_B3_IDA_N",     seq_b3_ida_noite,   stops_df),
+  gerar_shape_via_api("SHP_B3_VOLTA_N",   seq_b3_volta_noite, stops_df),
+  
+  gerar_shape_via_api("SHP_B4_IDA",       seq_b4_ida,         stops_df),
+  gerar_shape_via_api("SHP_B4_VOLTA",     seq_b4_volta,       stops_df),
+  gerar_shape_via_api("SHP_B4_IDA_N",     seq_b4_ida_noite,   stops_df),
+  gerar_shape_via_api("SHP_B4_VOLTA_N",   seq_b4_volta_noite, stops_df),
+  
+  gerar_shape_via_api("SHP_B5_IDA",       seq_b5_ida,         stops_df),
+  gerar_shape_via_api("SHP_B5_VOLTA",     seq_b5_volta,       stops_df),
+  gerar_shape_via_api("SHP_B5_IDA_N",     seq_b5_ida_noite,   stops_df),
+  gerar_shape_via_api("SHP_B5_VOLTA_N",   seq_b5_volta_noite, stops_df)
+)
+
+# Consolida tudo numa tabela única 'shapes'
+shapes_final <- dplyr::bind_rows(lista_shapes)
+
 job_list <- list(
-  gerar_dados_rota("B1", "DIAS_UTEIS", 0, h_b1_dia,   seq_b1_ida),
-  gerar_dados_rota("B1", "DIAS_UTEIS", 0, h_b1_noite, seq_b1_ida_noite),
-  gerar_dados_rota("B1", "DIAS_UTEIS", 1, h_b1_dia,   seq_b1_volta),
-  gerar_dados_rota("B1", "DIAS_UTEIS", 1, h_b1_noite, seq_b1_volta_noite),
-  gerar_dados_rota("B1", "SABADO",     0, h_b1_sab,   seq_b1_ida),
-  gerar_dados_rota("B1", "SABADO",     1, h_b1_sab,   seq_b1_volta),
+  gerar_dados_rota("B1", "DIAS_UTEIS", 0, h_b1_dia,   seq_b1_ida, "SHP_B1_IDA"),
+  gerar_dados_rota("B1", "DIAS_UTEIS", 0, h_b1_noite, seq_b1_ida_noite, "SHP_B1_IDA_N"),
+  gerar_dados_rota("B1", "DIAS_UTEIS", 1, h_b1_dia,   seq_b1_volta, "SHP_B1_VOLTA"),
+  gerar_dados_rota("B1", "DIAS_UTEIS", 1, h_b1_noite, seq_b1_volta_noite, "SHP_B1_VOLTA_N"),
+  gerar_dados_rota("B1", "SABADO",     0, h_b1_sab,   seq_b1_ida, "SHP_B1_IDA"),
+  gerar_dados_rota("B1", "SABADO",     1, h_b1_sab,   seq_b1_volta, "SHP_B1_VOLTA"),
   
-  gerar_dados_rota("B2", "DIAS_UTEIS", 0, h_b2_dia,   seq_b2_ida),
-  gerar_dados_rota("B2", "DIAS_UTEIS", 0, h_b2_noite, seq_b2_ida_noite), 
-  gerar_dados_rota("B2", "DIAS_UTEIS", 1, h_b2_dia,   seq_b2_volta),
-  gerar_dados_rota("B2", "DIAS_UTEIS", 1, h_b2_noite, seq_b2_volta_noite), 
-  gerar_dados_rota("B2", "SABADO",     0, h_b2_sab,   seq_b2_ida),
-  gerar_dados_rota("B2", "SABADO",     1, h_b2_sab,   seq_b2_volta),
+  gerar_dados_rota("B2", "DIAS_UTEIS", 0, h_b2_dia,   seq_b2_ida, "SHP_B2_IDA"),
+  gerar_dados_rota("B2", "DIAS_UTEIS", 0, h_b2_noite, seq_b2_ida_noite, "SHP_B2_IDA_N"), 
+  gerar_dados_rota("B2", "DIAS_UTEIS", 1, h_b2_dia,   seq_b2_volta, "SHP_B2_VOLTA"),
+  gerar_dados_rota("B2", "DIAS_UTEIS", 1, h_b2_noite, seq_b2_volta_noite, "SHP_B2_VOLTA_N"), 
+  gerar_dados_rota("B2", "SABADO",     0, h_b2_sab,   seq_b2_ida, "SHP_B2_IDA"),
+  gerar_dados_rota("B2", "SABADO",     1, h_b2_sab,   seq_b2_volta, "SHP_B2_VOLTA"),
   
-  gerar_dados_rota("B3", "DIAS_UTEIS", 0, h_b3_dia,   seq_b3_ida),
-  gerar_dados_rota("B3", "DIAS_UTEIS", 0, h_b3_noite, seq_b3_ida_noite), 
-  gerar_dados_rota("B3", "DIAS_UTEIS", 1, h_b3_dia,   seq_b3_volta),
-  gerar_dados_rota("B3", "DIAS_UTEIS", 1, h_b3_noite, seq_b3_volta_noite), 
-  gerar_dados_rota("B3", "SABADO",     0, h_b3_sab,   seq_b3_ida),
-  gerar_dados_rota("B3", "SABADO",     1, h_b3_sab,   seq_b3_volta),
+  gerar_dados_rota("B3", "DIAS_UTEIS", 0, h_b3_dia,   seq_b3_ida, "SHP_B3_IDA"),
+  gerar_dados_rota("B3", "DIAS_UTEIS", 0, h_b3_noite, seq_b3_ida_noite, "SHP_B3_IDA_N"), 
+  gerar_dados_rota("B3", "DIAS_UTEIS", 1, h_b3_dia,   seq_b3_volta, "SHP_B3_VOLTA"),
+  gerar_dados_rota("B3", "DIAS_UTEIS", 1, h_b3_noite, seq_b3_volta_noite, "SHP_B3_VOLTA_N"), 
+  gerar_dados_rota("B3", "SABADO",     0, h_b3_sab,   seq_b3_ida, "SHP_B3_IDA"),
+  gerar_dados_rota("B3", "SABADO",     1, h_b3_sab,   seq_b3_volta, "SHP_B3_VOLTA"),
   
-  gerar_dados_rota("B4", "DIAS_UTEIS", 0, h_b4_dia,   seq_b4_ida),
-  gerar_dados_rota("B4", "DIAS_UTEIS", 0, h_b4_noite, seq_b4_ida_noite), 
-  gerar_dados_rota("B4", "DIAS_UTEIS", 1, h_b4_dia,   seq_b4_volta),
-  gerar_dados_rota("B4", "DIAS_UTEIS", 1, h_b4_noite, seq_b4_volta_noite), 
-  gerar_dados_rota("B4", "SABADO",     0, h_b4_sab,   seq_b4_ida),
-  gerar_dados_rota("B4", "SABADO",     1, h_b4_sab,   seq_b4_volta),
+  gerar_dados_rota("B4", "DIAS_UTEIS", 0, h_b4_dia,   seq_b4_ida, "SHP_B4_IDA"),
+  gerar_dados_rota("B4", "DIAS_UTEIS", 0, h_b4_noite, seq_b4_ida_noite, "SHP_B4_IDA_N"), 
+  gerar_dados_rota("B4", "DIAS_UTEIS", 1, h_b4_dia,   seq_b4_volta, "SHP_B4_VOLTA"),
+  gerar_dados_rota("B4", "DIAS_UTEIS", 1, h_b4_noite, seq_b4_volta_noite, "SHP_B4_VOLTA_N"), 
+  gerar_dados_rota("B4", "SABADO",     0, h_b4_sab,   seq_b4_ida, "SHP_B4_IDA"),
+  gerar_dados_rota("B4", "SABADO",     1, h_b4_sab,   seq_b4_volta, "SHP_B4_VOLTA"),
   
-  gerar_dados_rota("B5", "DIAS_UTEIS", 0, h_b5_dia,   seq_b5_ida),
-  gerar_dados_rota("B5", "DIAS_UTEIS", 0, h_b5_noite, seq_b5_ida_noite), 
-  gerar_dados_rota("B5", "DIAS_UTEIS", 1, h_b5_dia,   seq_b5_volta),
-  gerar_dados_rota("B5", "DIAS_UTEIS", 1, h_b5_noite, seq_b5_volta_noite), 
-  gerar_dados_rota("B5", "SABADO",     0, h_b5_sab,   seq_b5_ida),
-  gerar_dados_rota("B5", "SABADO",     1, h_b5_sab,   seq_b5_volta)
+  gerar_dados_rota("B5", "DIAS_UTEIS", 0, h_b5_dia,   seq_b5_ida, "SHP_B5_IDA"),
+  gerar_dados_rota("B5", "DIAS_UTEIS", 0, h_b5_noite, seq_b5_ida_noite, "SHP_B5_IDA_N"), 
+  gerar_dados_rota("B5", "DIAS_UTEIS", 1, h_b5_dia,   seq_b5_volta, "SHP_B5_VOLTA"),
+  gerar_dados_rota("B5", "DIAS_UTEIS", 1, h_b5_noite, seq_b5_volta_noite, "SHP_B5_VOLTA_N"), 
+  gerar_dados_rota("B5", "SABADO",     0, h_b5_sab,   seq_b5_ida, "SHP_B5_IDA"),
+  gerar_dados_rota("B5", "SABADO",     1, h_b5_sab,   seq_b5_volta, "SHP_B5_VOLTA")
 )
 
 job_list <- purrr::compact(job_list)
@@ -225,7 +294,8 @@ gtfs <- list(
   trips      = as.data.table(purrr::map_dfr(job_list, "trips")),
   stop_times = as.data.table(purrr::map_dfr(job_list, "stop_times")),
   stops      = as.data.table(stops),
-  calendar   = as.data.table(calendar)
+  calendar   = as.data.table(calendar),
+  shapes     = as.data.table(shapes_final)
 )
 
 class(gtfs) <- c("dt_gtfs", "gtfs")
