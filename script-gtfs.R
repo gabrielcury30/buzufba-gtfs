@@ -4,26 +4,21 @@ library(lubridate)
 library(data.table)
 library(osrm)
 library(sf)
+library(mapview)
+library(dplyr)
 
-# Função auxiliar para gerar o shape via OSRM
 gerar_shape_via_api <- function(shape_id, sequencia_stops, df_stops) {
   message(paste("Gerando shape:", shape_id, "..."))
   
-  # Filtra as paradas dessa rota na ordem correta
-  # O match garante que a ordem da sequencia_stops seja respeitada
   coords <- df_stops[match(sequencia_stops, df_stops$stop_id), ]
   
-  # Solicita a rota ao OSRM
-  # OSRM espera c(lon, lat)
   rota_sf <- osrm::osrmRoute(
     loc = coords[, c("stop_lon", "stop_lat")], 
     overview = "full"
   )
   
-  # Extrai as coordenadas da geometria retornada
   pts <- sf::st_coordinates(rota_sf)
   
-  # Cria a tabela no formato shapes.txt
   df_shape <- data.table::data.table(
     shape_id = shape_id,
     shape_pt_lat = pts[, "Y"],
@@ -98,49 +93,40 @@ calendar <- tibble::tibble(
   start_date = "20260101", 
   end_date = "20261231")
 
-# --- 5. TRIPS & STOP_TIMES (VERSÃO MATEMÁTICA - CORREÇÃO DO 21:00) ---
 gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, sequencia_stops, shape_id) {
   
   if(length(horarios) == 0) return(NULL)
   
-  mins_inter_stop <- 3 # ALTERAR DEPOIS CASO NECESSARIO 
+  mins_inter_stop <- 3 
   
-  # Cria tabela base de viagens
   trips <- tibble::tibble(
     route_id = route_id,
     service_id = service_id,
     trip_id = paste(route_id, service_id, direction_id, gsub(":", "", horarios), sep = "_"),
     direction_id = direction_id,
     shape_id = shape_id,
-    hora_origem = horarios # Guardamos o horário original para referência
+    hora_origem = horarios
   )
   
   stop_times_list <- list()
   
   for(i in seq_len(nrow(trips))) {
     t_id <- trips$trip_id[i]
-    h_str <- trips$hora_origem[i] # Ex: "06:10"
+    h_str <- trips$hora_origem[i]
     
-    # 1. Converte "HH:MM" para minutos totais desde meia-noite
     parts <- as.numeric(strsplit(h_str, ":")[[1]])
     minutos_iniciais <- parts[1] * 60 + parts[2]
     
-    # 2. Gera a sequência de minutos para cada parada
-    # (0, 3, 6, 9...)
     offsets <- (seq_along(sequencia_stops) - 1) * mins_inter_stop
     
-    # 3. Soma
     minutos_chegada <- minutos_iniciais + offsets
     
-    # 4. Converte de volta para HH:MM:SS
     horas_finais <- floor(minutos_chegada / 60)
     minutos_finais <- minutos_chegada %% 60
     segundos_finais <- 0
     
-    # Formata com zeros à esquerda (Ex: 6 vira 06)
     tempos_formatados <- sprintf("%02d:%02d:%02d", horas_finais, minutos_finais, segundos_finais)
     
-    # Cria o dataframe
     df_temp <- tibble::tibble(
       trip_id = t_id,
       arrival_time = tempos_formatados,
@@ -151,10 +137,8 @@ gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, seque
     stop_times_list[[i]] <- df_temp
   }
   
-  # Consolida
   stop_times_final <- dplyr::bind_rows(stop_times_list)
   
-  # Remove a coluna auxiliar antes de retornar
   trips <- trips %>% select(-hora_origem)
   
   return(list(trips = trips, stop_times = stop_times_final))
@@ -212,13 +196,8 @@ h_b5_dia   <- h_b5_full[h_b5_full < "17:45"]
 h_b5_noite <- h_b5_full[h_b5_full >= "17:45"]
 h_b5_sab   <- h_b5_full[1:which(h_b5_full == "14:35")]
 
-# --- GERAÇÃO DOS SHAPES  ---
-
-# Convertemos stops para data.frame normal para facilitar o uso na função
 stops_df <- as.data.frame(stops)
 
-# Lista de shapes únicos que precisamos gerar
-# Note que estamos reaproveitando as variaveis de sequencia
 lista_shapes <- list(
   gerar_shape_via_api("SHP_B1_IDA",       seq_b1_ida,         stops_df),
   gerar_shape_via_api("SHP_B1_VOLTA",     seq_b1_volta,       stops_df),
@@ -246,7 +225,6 @@ lista_shapes <- list(
   gerar_shape_via_api("SHP_B5_VOLTA_N",   seq_b5_volta_noite, stops_df)
 )
 
-# Consolida tudo numa tabela única 'shapes'
 shapes_final <- dplyr::bind_rows(lista_shapes)
 
 job_list <- list(
@@ -317,5 +295,88 @@ gtfs$calendar[, end_date   := as.Date(as.character(end_date), format = "%Y%m%d")
 is.list(gtfs)
 names(gtfs)
 sapply(gtfs, class)
+
+investigar_rota <- function(gtfs_data) {
+  
+  if(is.null(gtfs_data$shapes) || nrow(gtfs_data$shapes) == 0) {
+    message("ERRO: A tabela 'shapes' está vazia no objeto GTFS.")
+    return(NULL)
+  }
+  
+  shapes_disponiveis <- unique(gtfs_data$shapes$shape_id)
+  
+  message("\n--- SHAPES DISPONÍVEIS ---")
+  print(data.frame(Indice = 1:length(shapes_disponiveis), ID = shapes_disponiveis))
+  
+  n <- readline(prompt = "\nDigite o NÚMERO do shape que deseja visualizar (ou 0 para sair): ")
+  n <- as.numeric(n)
+  
+  if (is.na(n) || n == 0 || n > length(shapes_disponiveis)) {
+    message("Operação cancelada.")
+    return(NULL)
+  }
+  
+  shape_escolhido <- shapes_disponiveis[n]
+  message(paste("Processando:", shape_escolhido, "..."))
+  
+  shape_filtrado <- gtfs_data$shapes %>% 
+    filter(shape_id == shape_escolhido) %>%
+    as.data.table()
+  
+  if (nrow(shape_filtrado) < 2) {
+    message("ERRO: Este shape tem menos de 2 pontos. O OSRM falhou ou a rota é inválida.")
+    return(NULL)
+  }
+  
+  mini_gtfs <- list(shapes = shape_filtrado)
+  class(mini_gtfs) <- c("dt_gtfs", "gtfs")
+  
+  linha_sf <- tryCatch({
+    gtfstools::convert_shapes_to_sf(mini_gtfs)
+  }, error = function(e) {
+    message("Erro na conversão geométrica: ", e$message)
+    return(NULL)
+  })
+  
+  if (is.null(linha_sf)) return(NULL)
+  
+  exemplo_trip <- gtfs_data$trips %>% 
+    filter(shape_id == shape_escolhido) %>% 
+    slice(1) %>% 
+    pull(trip_id)
+  
+  if(length(exemplo_trip) == 0) {
+    message("Aviso: Nenhuma viagem (trip) está usando este shape_id. Mostrando apenas o traçado.")
+    stops_sf <- NULL
+  } else {
+    stops_da_rota <- gtfs_data$stop_times %>% 
+      filter(trip_id == exemplo_trip) %>%
+      left_join(gtfs_data$stops, by = "stop_id") %>%
+      arrange(stop_sequence)
+    
+    if(nrow(stops_da_rota) > 0) {
+      stops_sf <- st_as_sf(stops_da_rota, coords = c("stop_lon", "stop_lat"), crs = 4326)
+    } else {
+      stops_sf <- NULL
+    }
+  }
+  
+  message("Gerando visualização...")
+  
+  m1 <- mapview(linha_sf, color = "blue", lwd = 5, layer.name = "Trajeto (Shape)")
+  
+  if (!is.null(stops_sf)) {
+    m2 <- mapview(stops_sf, col.regions = "black", color = "white", cex = 6, 
+                  label = paste(stops_sf$stop_sequence, "-", stops_sf$stop_name),
+                  layer.name = "Paradas")
+    print(m1 + m2)
+  } else {
+    print(m1)
+  }
+  
+  message("Mapa gerado na aba 'Viewer'.")
+}
+
+investigar_rota(gtfs)
 
 write_gtfs(gtfs, "buzufba_gtfs.zip")
