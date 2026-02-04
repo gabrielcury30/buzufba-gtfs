@@ -379,4 +379,8 @@ investigar_rota <- function(gtfs_data) {
 
 investigar_rota(gtfs)
 
+trip_shapes <- convert_shapes_to_sf(gtfs)
+head(trip_shapes)
+mapview(trip_shapes, zcol = "shape_id")
+
 write_gtfs(gtfs, "buzufba_gtfs.zip")
