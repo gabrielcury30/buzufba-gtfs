@@ -266,6 +266,15 @@ job_list <- list(
 
 job_list <- purrr::compact(job_list)
 
+feed_info <- tibble::tibble(
+  feed_publisher_name = agency$agency_name,
+  feed_publisher_url  = agency$agency_url,
+  feed_lang           = agency$agency_lang,
+  feed_start_date     = calendar$start_date[1],
+  feed_end_date       = calendar$end_date[1],
+  feed_version        = paste0("UFBA_", Sys.Date())
+)
+
 gtfs <- list(
   agency     = as.data.table(agency),
   routes     = as.data.table(routes),
@@ -273,7 +282,8 @@ gtfs <- list(
   stop_times = as.data.table(purrr::map_dfr(job_list, "stop_times")),
   stops      = as.data.table(stops),
   calendar   = as.data.table(calendar),
-  shapes     = as.data.table(shapes_final)
+  shapes     = as.data.table(shapes_final),
+  feed_info  = as.data.table(feed_info)
 )
 
 class(gtfs) <- c("dt_gtfs", "gtfs")
@@ -291,6 +301,9 @@ message("Total de paradas programadas: ", nrow(gtfs$stop_times))
 
 gtfs$calendar[, start_date := as.Date(as.character(start_date), format = "%Y%m%d")]
 gtfs$calendar[, end_date   := as.Date(as.character(end_date), format = "%Y%m%d")]
+
+gtfs$feed_info[, feed_start_date := as.Date(as.character(feed_start_date), format = "%Y%m%d")]
+gtfs$feed_info[, feed_end_date := as.Date(as.character(feed_end_date), format = "%Y%m%d")]
 
 is.list(gtfs)
 names(gtfs)
@@ -383,4 +396,13 @@ trip_shapes <- convert_shapes_to_sf(gtfs)
 head(trip_shapes)
 mapview(trip_shapes, zcol = "shape_id")
 
+geom_shapes <- gtfstools::get_trip_geometry(gtfs)
+mapview(geom_shapes, zcol = "trip_id")
+length(unique(gtfs$shapes$shape_id))
+length(unique(gtfs$trips$trip_id))
+
 write_gtfs(gtfs, "buzufba_gtfs.zip")
+
+validator_path <- download_validator(tempdir())
+
+gtfstools::validate_gtfs(gtfs, "validation_result", validator_path)
