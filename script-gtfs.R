@@ -396,12 +396,7 @@ trip_shapes <- convert_shapes_to_sf(gtfs)
 head(trip_shapes)
 mapview(trip_shapes, zcol = "shape_id")
 
-geom_shapes <- gtfstools::get_trip_geometry(gtfs)
-mapview(geom_shapes, zcol = "trip_id")
-length(unique(gtfs$shapes$shape_id))
-length(unique(gtfs$trips$trip_id))
-
-write_gtfs(gtfs, "buzufba_gtfs.zip")
+write_gtfs(gtfs, "data/gtfs/buzufba_gtfs.zip")
 
 validator_path <- download_validator(tempdir())
 
