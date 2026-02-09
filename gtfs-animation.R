@@ -10,6 +10,9 @@ library(viridis)
 library(sfheaders)
 library(units)
 
+# download Salvador border for spatial context
+salvador <- geobr::read_municipality(code_muni = 2927408)
+
 ###### 1. process public transport data  ------------------
 
 # read gtfs
@@ -19,19 +22,10 @@ gtfs_dt <- gtfs2gps::read_gtfs("data/gtfs/buzufba_gtfs.zip")
 shapes_sf <- gtfs2gps::gtfs_shapes_as_sf(gtfs_dt)
 
 # Convert GTFS data into a data.table with GPS-like records
-gps_dt <- gtfs2gps::gtfs2gps(gtfs_dt, spatial_resolution = 100, parallel = T)
+gps_dt <- gtfs2gps::gtfs2gps(gtfs_dt, spatial_resolution = 500, parallel = FALSE)
 head(gps_dt)
 
-# Convert "GPS" points into sf
-gps_sf <- sfheaders::sf_point(gps_dt, x = "shape_pt_lon" , y = "shape_pt_lat", keep = T)
-sf::st_crs(gps_sf) <- 4326
-head(gps_sf)
-
 ###### 2. gif with blank background [fully reproducible] ------------------
-
-# download Salvador border for spatial context
-salvador <- geobr::read_municipality(code_muni = 2927408)
-
 anim <- ggplot() +
   geom_sf(data = salvador, color='gray50', fill=NA) +
   geom_sf(data = shapes_sf, color='gray90', size=0.01) +
@@ -45,8 +39,7 @@ anim <- ggplot() +
   shadow_wake(wake_length = 0.015, alpha = FALSE) +
   ease_aes('linear')
 
+animate(anim, fps = 20)
 
 # save gif
 anim_save(animation = anim, "data/gtfs/gtfs-anim.gif", fps = 20)
-
-animate(anim, fps = 20)
