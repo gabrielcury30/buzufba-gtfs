@@ -9,6 +9,7 @@ library(sf)
 library(viridis)
 library(sfheaders)
 library(units)
+library(gifski)
 
 # download Salvador border for spatial context
 salvador <- geobr::read_municipality(code_muni = 2927408)
@@ -42,4 +43,4 @@ anim <- ggplot() +
 animate(anim, fps = 20)
 
 # save gif
-anim_save(animation = anim, "data/gtfs/gtfs-anim.gif", fps = 20)
+anim_save(animation = anim, "data/gtfs/gtfs-anim.gif", fps = 20, renderer = gifski_renderer())
