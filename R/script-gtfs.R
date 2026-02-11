@@ -396,8 +396,10 @@ trip_shapes <- convert_shapes_to_sf(gtfs)
 head(trip_shapes)
 mapview(trip_shapes, zcol = "shape_id")
 
+## Escreve o arquivo do GTFS do BUZUFBA
 write_gtfs(gtfs, "data/buzufba_gtfs.zip")
 
+## Valida o GTFS do BuzUFBA
 validator_path <- download_validator(tempdir())
 
 gtfstools::validate_gtfs(gtfs, "validation_result", validator_path)
