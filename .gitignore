@@ -7,6 +7,12 @@
 .Rcheck/
 .httr-oauth
 
+# Claude Code
+CLAUDE.md
+
+# R Markdown
+README.html
+
 # OS
 .DS_Store
 Thumbs.db
