@@ -1,4 +1,12 @@
-.Rproj.user
+# R / RStudio
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
+*.Rproj
+.Rcheck/
+.httr-oauth
+
+# OS
+.DS_Store
+Thumbs.db
