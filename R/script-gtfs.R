@@ -390,8 +390,10 @@ investigar_rota <- function(gtfs_data) {
   message("Mapa gerado na aba 'Viewer'.")
 }
 
+## Visualização interativa das rotas
 investigar_rota(gtfs)
 
+## Gera arquivo de linhas a partir do GTFS:
 trip_shapes <- convert_shapes_to_sf(gtfs)
 head(trip_shapes)
 mapview(trip_shapes, zcol = "shape_id")
