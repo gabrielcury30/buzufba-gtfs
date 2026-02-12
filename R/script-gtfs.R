@@ -390,14 +390,18 @@ investigar_rota <- function(gtfs_data) {
   message("Mapa gerado na aba 'Viewer'.")
 }
 
+## Visualização interativa das rotas
 investigar_rota(gtfs)
 
+## Gera arquivo de linhas a partir do GTFS:
 trip_shapes <- convert_shapes_to_sf(gtfs)
 head(trip_shapes)
 mapview(trip_shapes, zcol = "shape_id")
 
-write_gtfs(gtfs, "data/gtfs/buzufba_gtfs.zip")
+## Escreve o arquivo do GTFS do BUZUFBA
+write_gtfs(gtfs, "data/buzufba_gtfs.zip")
 
+## Valida o GTFS do BuzUFBA
 validator_path <- download_validator(tempdir())
 
 gtfstools::validate_gtfs(gtfs, "validation_result", validator_path)

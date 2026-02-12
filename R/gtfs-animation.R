@@ -17,7 +17,7 @@ salvador <- geobr::read_municipality(code_muni = 2927408)
 ###### 1. process public transport data  ------------------
 
 # read gtfs
-gtfs_dt <- gtfs2gps::read_gtfs("data/gtfs/buzufba_gtfs.zip")
+gtfs_dt <- gtfs2gps::read_gtfs("data/buzufba_gtfs.zip")
 
 # get transport network as sf object
 shapes_sf <- gtfs2gps::gtfs_shapes_as_sf(gtfs_dt)
@@ -43,4 +43,4 @@ anim <- ggplot() +
 animate(anim, fps = 20)
 
 # save gif
-anim_save(animation = anim, "data/gtfs/gtfs-anim.gif", fps = 20, renderer = gifski_renderer())
+anim_save(animation = anim, "data/gtfs-anim.gif", fps = 20, renderer = gifski_renderer())

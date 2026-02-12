@@ -1,4 +1,18 @@
-.Rproj.user
+# R / RStudio
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
+*.Rproj
+.Rcheck/
+.httr-oauth
+
+# Claude Code
+CLAUDE.md
+
+# R Markdown
+README.html
+
+# OS
+.DS_Store
+Thumbs.db
