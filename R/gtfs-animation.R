@@ -40,7 +40,7 @@ anim <- ggplot() +
   shadow_wake(wake_length = 0.015, alpha = FALSE) +
   ease_aes('linear')
 
-animate(anim, fps = 20)
+animate(anim, fps = 2)
 
 # save gif
 anim_save(animation = anim, "data/gtfs-anim.gif", fps = 20, renderer = gifski_renderer())
