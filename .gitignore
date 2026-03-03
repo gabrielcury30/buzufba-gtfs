@@ -16,3 +16,6 @@ README.html
 # OS
 .DS_Store
 Thumbs.db
+
+# Validator
+validation_result/
