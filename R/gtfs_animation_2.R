@@ -22,7 +22,12 @@ sf::st_crs(shapes_sf) <- 4326
 
 # Converter GTFS em posições de GPS a cada 30 metros
 message("Simulando GPS dos ônibus...")
-gps_dt <- gtfs2gps::gtfs2gps(gtfs_dt, parallel = FALSE, spatial_resolution = 30)
+gps_dt <- gtfs2gps::gtfs2gps(gtfs_dt, parallel = FALSE, spatial_resolution = 10)
+
+# Filtrar pontos duplicados e valores ausentes no tempo
+gps_dt <- gps_dt %>% 
+  dplyr::filter(!is.na(timestamp)) %>% 
+  dplyr::distinct(trip_id, timestamp, .keep_all = TRUE)
 
 # Filtrar janela de tempo de pico matinal (07:00 as 08:30)
 gps_dt2 <- gps_dt[between(timestamp, as.ITime("07:00:00"), as.ITime("08:30:00"))]
@@ -61,7 +66,7 @@ anim_vector <- ggplot() +
   # gganimate 
   labs(title = "BuzUFBA - Horário: {format(frame_time, '%H:%M')}") +
   transition_time(datetime) +
-  shadow_wake(wake_length = 0.05, alpha = FALSE) +
+  #shadow_wake(wake_length = 0.05, alpha = FALSE) +
   ease_aes('linear')
 
 # Salva GIF

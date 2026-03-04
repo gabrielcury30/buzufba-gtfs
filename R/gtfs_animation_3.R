@@ -65,7 +65,13 @@ aop <- aopdata::read_access(city = 'salvador', mode = 'car', geometry = TRUE) %>
 
 # RASTREAMENTO GPS (VEÍCULOS DO BUZUFBA)
 # Transforma as escalas e trajetos GTFS em pontos simulados de GPS
-gps <- gtfs2gps::gtfs2gps(gtfs_filtrado, parallel = FALSE, spatial_resolution = 30) # 30m para animação suave
+gps <- gtfs2gps::gtfs2gps(gtfs_filtrado, parallel = FALSE, spatial_resolution = 10) # 30m para animação suave
+
+# Filtrar pontos duplicados e valores ausentes no tempo
+gps <- gps %>% 
+  dplyr::filter(!is.na(timestamp)) %>% 
+  dplyr::distinct(trip_id, timestamp, .keep_all = TRUE)
+
 gps <- gps[between(timestamp, as.ITime('07:00:00'), as.ITime('08:30:00'))]
 
 # Converte pontos GPS para objeto espacial (sf)
@@ -118,7 +124,7 @@ p <- ggplot() +
   annotate("text", label = "Acesso a Empregos", x = x_text, y = -12.99 + (shift * 2), hjust = 0, color = clr, size = sz) +
   
   # Camada 4: Rotas BuzUFBA
-  geom_sf(data = routes_3d, color = "#00539F", size = 1, alpha = 0.6) +
+  geom_sf(data = routes_3d, color = "gray70", size = 1, alpha = 0.6) +
   annotate("text", label = "Malha\nBuzUFBA", x = x_text, y = -12.99 + (shift * 3), hjust = 0, color = clr, size = sz, fontface = "bold") +
   
   # Camada 5: Ônibus Dinâmicos (GPS Points)
@@ -135,7 +141,7 @@ p <- ggplot() +
   # Configurações do gganimate
   labs(title = "BuzUFBA - Operação Matutina: {format(frame_time, '%H:%M')}") +
   transition_time(datetime) +
-  shadow_wake(wake_length = 0.05, alpha = FALSE) +
+  #shadow_wake(wake_length = 0.05, alpha = FALSE) +
   ease_aes('linear')
 
 # RENDERIZAÇÃO E EXPORTAÇÃO
@@ -144,9 +150,5 @@ message("Renderizando a animação... Isso pode demorar alguns minutos.")
 # Salva GIF
 anim_save(animation = p, filename = "data_testes/BuzUFBA_Animacao_3D.gif", 
           fps = 10, duration = 15, width = 700, height = 600)
-
-# Salva MP4
-anim_mp4 <- animate(p, duration = 15, fps = 20, renderer = av_renderer(), width = 700, height = 600)
-anim_save(animation = anim_mp4, filename = "data_testes/BuzUFBA_Animacao_3D.mp4")
 
 message("Exportação Concluída com Sucesso!")
