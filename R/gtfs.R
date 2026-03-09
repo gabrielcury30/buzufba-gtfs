@@ -7,61 +7,95 @@ library(sf)
 library(mapview)
 
 # FUNÇÕES AUXILIARES
-gerar_shape_via_api <- function(shape_id, sequencia_stops, df_stops) {
-  message(sprintf("Gerando shape circular: %s ...", shape_id))
+processar_rota_osrm <- function(shape_id, sequencia_stops, df_stops) {
+  message(sprintf("Consultando API OSRM trecho-a-trecho para: %s ...", shape_id))
   
   coords <- df_stops[match(sequencia_stops, df_stops$stop_id), ]
   
-  rota_sf <- osrm::osrmRoute(
-    loc = coords[, c("stop_lon", "stop_lat")], 
-    overview = "full"
-  )
+  shape_pts <- list()
+  tempos_acumulados <- c(0) # Início no tempo ZERO
+  tempo_total <- 0
   
-  pts <- sf::st_coordinates(rota_sf)
+  # Loop calculando cada trecho da viagem separadamente
+  for(i in 1:(nrow(coords) - 1)) {
+    origem <- as.numeric(coords[i, c("stop_lon", "stop_lat")])
+    destino <- as.numeric(coords[i+1, c("stop_lon", "stop_lat")])
+    
+    # Chamada à API (com tryCatch para evitar quedas de internet/servidor)
+    rota_trecho <- tryCatch({
+      osrm::osrmRoute(src = origem, dst = destino, overview = "full")
+    }, error = function(e) {
+      message("  -> Oscilação na API. Tentando novamente...")
+      Sys.sleep(2)
+      osrm::osrmRoute(src = origem, dst = destino, overview = "full")
+    })
+    
+    duracao_minutos <- rota_trecho$duration + 0.5 
+    tempo_total <- tempo_total + duracao_minutos
+    tempos_acumulados <- c(tempos_acumulados, tempo_total)
+    
+    # Coleta a geometria e remove o 1º ponto (para não duplicar com o fim do trecho anterior)
+    pts <- sf::st_coordinates(rota_trecho)
+    if(i > 1) pts <- pts[-1, ] 
+    
+    shape_pts[[i]] <- pts
+    Sys.sleep(0.2)
+  }
   
-  df_shape <- tibble(
+  # Junta todos os trechos num único shape contínuo
+  matriz_pts <- do.call(rbind, shape_pts)
+  
+  df_shape <- tibble::tibble(
     shape_id = shape_id,
-    shape_pt_lat = pts[, "Y"],
-    shape_pt_lon = pts[, "X"],
-    shape_pt_sequence = 1:nrow(pts)
+    shape_pt_lat = matriz_pts[, "Y"],
+    shape_pt_lon = matriz_pts[, "X"],
+    shape_pt_sequence = 1:nrow(matriz_pts)
   )
   
-  return(df_shape)
+  # Retorna uma LISTA com o traçado e o "Dicionário de Tempos"
+  return(list(shape = df_shape, tempos = tempos_acumulados))
 }
 
-gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, sequencia_stops, shape_id) {
+gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, sequencia_stops, shape_id, dicionario_tempos) {
   if (length(horarios) == 0) return(NULL)
   
-  mins_inter_stop <- 3 
+  # Pega os tempos calculados pelo OSRM para ESTE shape
+  offsets_minutos <- dicionario_tempos[[shape_id]]
   
-  # Cria as viagens (trips) de forma circular
-  trips <- tibble(
+  trips <- tibble::tibble(
     route_id = route_id,
     service_id = service_id,
-    trip_id = sprintf("%s_%s_CIRCULAR_%s", route_id, service_id, str_remove(horarios, ":")),
+    trip_id = sprintf("%s_%s_CIRCULAR_%s", route_id, service_id, stringr::str_remove(horarios, ":")),
     direction_id = direction_id,
     shape_id = shape_id,
     horario_inicio = horarios
   )
   
-  # Cria os horários de parada (stop_times) da rota circular inteira
   stop_times <- trips %>%
-    mutate(stop_id = list(sequencia_stops)) %>%
-    unnest(stop_id) %>%
-    group_by(trip_id) %>%
-    mutate(
-      stop_sequence = row_number(),
-      offset_min = (stop_sequence - 1) * mins_inter_stop,
-      minutos_totais = (as.numeric(substr(horario_inicio, 1, 2)) * 60) + 
-        as.numeric(substr(horario_inicio, 4, 5)) + offset_min,
-      arrival_time = sprintf("%02d:%02d:00", floor(minutos_totais / 60), 
-                             minutos_totais %% 60),
+    dplyr::mutate(
+      stop_id = list(sequencia_stops),
+      offset_min = list(offsets_minutos) # Injeta o tempo do OSRM
+    ) %>%
+    tidyr::unnest(cols = c(stop_id, offset_min)) %>%
+    dplyr::group_by(trip_id) %>%
+    dplyr::mutate(
+      stop_sequence = dplyr::row_number(),
+      
+      segundos_iniciais = (as.numeric(substr(horario_inicio, 1, 2)) * 3600) + 
+        (as.numeric(substr(horario_inicio, 4, 5)) * 60),
+      
+      segundos_totais = round(segundos_iniciais + (offset_min * 60)),
+      
+      arrival_time = sprintf("%02d:%02d:%02d", 
+                             floor(segundos_totais / 3600), 
+                             floor((segundos_totais %% 3600) / 60), 
+                             segundos_totais %% 60),
       departure_time = arrival_time
     ) %>%
-    ungroup() %>%
-    select(trip_id, arrival_time, departure_time, stop_id, stop_sequence)
+    dplyr::ungroup() %>%
+    dplyr::select(trip_id, arrival_time, departure_time, stop_id, stop_sequence)
   
-  trips <- trips %>% select(-horario_inicio)
+  trips <- trips %>% dplyr::select(-horario_inicio)
   
   return(list(trips = trips, stop_times = stop_times))
 }
@@ -193,28 +227,37 @@ config_rotas <- map_dfr(names(h_base), function(rota) {
 
 # GERAÇÃO AUTOMATIZADA DOS DADOS
 # Gera Shapes Únicos
-shapes_unicos <- config_rotas %>% distinct(shape_id, sequencia_stops)
+shapes_unicos <- config_rotas %>% dplyr::distinct(shape_id, sequencia_stops)
 
-shapes_final <- map2_dfr(
+message("\nIniciando extração do OSRM (Pode levar alguns minutos)...")
+resultados_osrm <- purrr::map2(
   shapes_unicos$shape_id, 
   shapes_unicos$sequencia_stops, 
-  ~gerar_shape_via_api(.x, .y, stops)
+  ~processar_rota_osrm(.x, .y, stops)
 )
 
-# Gera Viagens (Trips) e Horários (Stop Times)
-jobs <- pmap(config_rotas, gerar_dados_rota) %>% purrr::compact()
+# Separa as tabelas de shape para o objeto GTFS
+shapes_final <- purrr::map_dfr(resultados_osrm, "shape")
 
-trips_final <- map_dfr(jobs, "trips")
-stop_times_final <- map_dfr(jobs, "stop_times")
+# Cria o Dicionário de Tempos (chave = shape_id, valor = vetor de tempos)
+dicionario_tempos <- setNames(purrr::map(resultados_osrm, "tempos"), shapes_unicos$shape_id)
+
+# Gera Viagens (Trips) e Horários (Stop Times) injetando o dicionário
+jobs <- purrr::pmap(config_rotas, function(route_id, service_id, direction_id, horarios, sequencia_stops, shape_id) {
+  gerar_dados_rota(route_id, service_id, direction_id, horarios, sequencia_stops, shape_id, dicionario_tempos)
+}) %>% purrr::compact()
+
+trips_final <- purrr::map_dfr(jobs, "trips")
+stop_times_final <- purrr::map_dfr(jobs, "stop_times")
 
 # Monta as informações de Feed
-feed_info <- tibble(
+feed_info <- tibble::tibble(
   feed_publisher_name = agency$agency_name,
   feed_publisher_url  = agency$agency_url,
   feed_lang           = agency$agency_lang,
   feed_start_date     = calendar$start_date[1],
   feed_end_date       = calendar$end_date[1],
-  feed_version        = paste0("UFBA_CIRCULAR_", Sys.Date())
+  feed_version        = paste0("UFBA_OSRM_", Sys.Date())
 )
 
 # MONTAGEM E VALIDAÇÃO DO OBJETO GTFS
