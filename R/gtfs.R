@@ -143,27 +143,27 @@ routes <- tibble(
 
 stops <- tribble(
   ~stop_id,          ~stop_name,                                              ~stop_lat, ~stop_lon,
-  "SAO_LAZARO",      "Pt. Estacionamento São Lázaro",                         -13.004763, -38.512352,
-  "POLITECNICA",     "Pt. Politécnica",                                       -12.999620, -38.510380,
-  "ARQUITETURA",     "Pt. Arquitetura",                                       -12.997114, -38.508632,
-  "RESIDENCIA5",     "Pt. Residência 5",                                      -12.999700, -38.504900,
-  "CANELA_ICS",      "Campus Vale do Canela (Entrada ICS)",                   -12.994777, -38.520578,
-  "ISC_CANELA",      "ISC Canela",                                            -12.994506, -38.521907,
-  "ODONTO",          "P. Odontologia",                                        -12.994676, -38.522860,
-  "REITORIA",        "P. Reitoria",                                           -12.992349, -38.520642,
-  "CRECHE",          "P. Creche Canela",                                      -12.994740, -38.517485,
-  "GRACA_R2",        "P. Graça R2 (Delicia)",                                 -12.997625, -38.519136,
-  "DIREITO",         "Faculdade de Direito",                                  -12.996277, -38.521557,
-  "PAF1_MAT",        "Pt. Estacionamento (PAF.1 Matemática)",                 -13.002294, -38.506550,
-  "AV_7",            "Avenida 7 de Setembro",                                 -12.983191, -38.515456,
-  "BELAS_ARTES",     "Belas Artes",                                           -12.991313, -38.521232,
-  "RESIDENCIA1",     "Residência I - Vitória",                                -12.994064, -38.526495,
-  "GEOCIENCIAS",     "Pt. Instituto de Geociências",                          -12.998493, -38.506518,
-  "FACOM",           "Pt. Facom",                                             -13.001377, -38.509747,
-  "PORTARIA",        "Pt. Portaria Principal",                                -13.006067, -38.510318,
-  "FACED",           "Faculdade de Educação",                                 -12.995104, -38.519310,
-  "PROAE",           "Pró-Reitoria (PROAE)",                                  -12.997461, -38.509326,
-  "CENTRO_ESPORTES", "Centro Esportes da UFBA",                               -13.009432, -38.513788
+  "SAO_LAZARO",      "Pt. Estacionamento São Lázaro",                         -13.005291, -38.512779,
+  "POLITECNICA",     "Pt. Politécnica",                                       -12.998888, -38.511684,
+  "ARQUITETURA",     "Pt. Arquitetura",                                       -12.997030, -38.508690,
+  "RESIDENCIA5",     "Pt. Residência 5",                                      -12.999222, -38.505920,
+  "CANELA_ICS",      "Campus Vale do Canela (Entrada ICS)",                   -12.994840, -38.520591,
+  "ISC_CANELA",      "ISC Canela",                                            -12.994706, -38.522008,
+  "ODONTO",          "P. Odontologia",                                        -12.994901, -38.523042,
+  "REITORIA",        "P. Reitoria",                                           -12.992472, -38.520556,
+  "CRECHE",          "P. Creche Canela",                                      -12.995331, -38.516956,
+  "GRACA_R2",        "P. Graça R2 (Delicia)",                                 -12.997273, -38.518969,
+  "DIREITO",         "Faculdade de Direito",                                  -12.996346, -38.521625,
+  "PAF1_MAT",        "Pt. Estacionamento (PAF.1 Matemática)",                 -13.001777, -38.506958,
+  "AV_7",            "Avenida 7 de Setembro",                                 -12.983365, -38.514902,
+  "BELAS_ARTES",     "Belas Artes",                                           -12.991234, -38.521154,
+  "RESIDENCIA1",     "Residência I - Vitória",                                -12.994019, -38.526399,
+  "GEOCIENCIAS",     "Pt. Instituto de Geociências",                          -12.998504, -38.506508,
+  "FACOM",           "Pt. Facom",                                             -13.001525, -38.509837,
+  "PORTARIA",        "Pt. Portaria Principal",                                -13.006014, -38.509497,
+  "FACED",           "Faculdade de Educação",                                 -12.995155, -38.519295,
+  "PROAE",           "Pró-Reitoria (PROAE)",                                  -12.997430, -38.509207,
+  "CENTRO_ESPORTES", "Centro Esportes da UFBA",                               -13.009451, -38.513807
 )
 
 calendar <- tibble(
@@ -194,8 +194,8 @@ seqs <- list(
     c("AV_7", "RESIDENCIA1", "GRACA_R2", "POLITECNICA", "SAO_LAZARO", "ARQUITETURA", "GEOCIENCIAS", "PAF1_MAT")
   ),
   B5 = unir_circular(
-    c("GEOCIENCIAS", "FACOM", "PORTARIA", "CENTRO_ESPORTES", "PAF1_MAT", "PROAE", "POLITECNICA", "SAO_LAZARO", "POLITECNICA", "CRECHE", "REITORIA"),
-    c("RESIDENCIA1", "DIREITO", "ISC_CANELA", "ODONTO", "REITORIA", "CRECHE", "POLITECNICA", "SAO_LAZARO", "POLITECNICA", "ARQUITETURA", "GEOCIENCIAS", "PAF1_MAT", "PORTARIA", "FACOM", "GEOCIENCIAS")
+    c("GEOCIENCIAS", "FACOM", "PORTARIA", "CENTRO_ESPORTES", "RESIDENCIA5", "PROAE", "SAO_LAZARO", "POLITECNICA", "CRECHE", "REITORIA"),
+    c("RESIDENCIA1", "DIREITO", "CANELA_ICS", "ODONTO", "REITORIA", "CRECHE", "POLITECNICA", "SAO_LAZARO", "ARQUITETURA", "FACOM", "GEOCIENCIAS")
   )
 )
 

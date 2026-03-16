@@ -13,8 +13,8 @@ pacman::p_load(
 gtfs_file <- "data/buzufba_gtfs.zip"
 gtfs_dt <- gtfstools::read_gtfs(gtfs_file)
 
-# Filtrar apenas os serviços de dias úteis
-gtfs_dt <- gtfstools::filter_by_service_id(gtfs_dt, service_id = "DIAS_UTEIS")
+# Filtrar apenas a operação na segunda-feira
+gtfs_dt <- gtfstools::filter_by_weekday(gtfs_dt, "monday", keep = TRUE)
 
 # Extrair a malha geométrica das rotas
 shapes_sf <- gtfstools::convert_shapes_to_sf(gtfs_dt)
@@ -29,8 +29,8 @@ gps_dt <- gps_dt %>%
   dplyr::filter(!is.na(timestamp)) %>% 
   dplyr::distinct(trip_id, timestamp, .keep_all = TRUE)
 
-# Filtrar janela de tempo de pico matinal (07:00 as 08:30)
-gps_dt2 <- gps_dt[between(timestamp, as.ITime("07:00:00"), as.ITime("08:30:00"))]
+# Filtrar janela de tempo
+gps_dt2 <- gps_dt[between(timestamp, as.ITime("06:00:00"), as.ITime("22:10:00"))]
 
 # Converter pontos de GPS em objeto geográfico (sf) de forma nativa e segura
 gps_sf <- sf::st_as_sf(gps_dt2, coords = c("shape_pt_lon", "shape_pt_lat"), crs = 4326)
@@ -50,7 +50,7 @@ salvador <- geobr::read_municipality(code_muni = 2927408, year = 2020) %>%
   sf::st_intersection(bbox_buffer)
 
 # ANIMAÇÃO COM FUNDO VETORIAL
-message("Gerando Animação 1 (Fundo Vetorial)...")
+message("Gerando Animação...")
 
 anim_vector <- ggplot() +
   geom_sf(data = salvador, color = "gray60", fill = "gray95") +
@@ -66,8 +66,8 @@ anim_vector <- ggplot() +
   # gganimate 
   labs(title = "BuzUFBA - Horário: {format(frame_time, '%H:%M')}") +
   transition_time(datetime) +
-  #shadow_wake(wake_length = 0.05, alpha = FALSE) +
+  shadow_wake(wake_length = 0.05, alpha = FALSE) +
   ease_aes('linear')
 
 # Salva GIF
-anim_save(animation = anim_vector, "data_testes/BuzUFBA_Anim_Vector.gif", fps = 15, duration = 10, width = 600, height = 500)
+anim_save(animation = anim_vector, "data_testes/BuzUFBA_Anim_Vector.gif", fps = 30, duration = 10)
