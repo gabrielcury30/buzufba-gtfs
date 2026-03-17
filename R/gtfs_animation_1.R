@@ -1,7 +1,7 @@
 # RASTREAMENTO E ANIMAÇÃO - GTFS BUZUFBA (MODELO CIRCULAR)
 library(gtfs2gps); library(geobr); library(ggplot2); library(gganimate)
 library(ggthemes); library(sf); library(viridis); library(gifski)
-library(dplyr); library(data.table); library(lubridate)
+library(dplyr); library(data.table); library(lubridate); library(ggspatial)
 
 # Download do limite de Salvador
 salvador <- geobr::read_municipality(code_muni = 2927408, year = 2020) %>% 
@@ -39,17 +39,18 @@ gps_sub   <- gps_sf %>% mutate(cumdist = as.numeric(cumdist))
 shapes_sub <- shapes_sf
 
 # ANIMAÇÃO
-anim <- ggplot() +
+anim <- ggplot() + annotation_map_tile(type = "cartolight", zoom = 16) +
   geom_sf(data = shapes_sub, linetype = "solid", linewidth = 0.5, color = "gray70") +
-  geom_sf(data = gps_sub, color = "blue", size = 5, alpha = 0.7) +
+  geom_sf(data = gps_sub, size = 3, alpha = 0.7, aes(color = shape_id)) +
   # sf::st_bbox() para enquadrar sem precisar de min/max manuais
-  coord_sf(xlim = sf::st_bbox(gps_sub)[c("xmin", "xmax")],
-           ylim = sf::st_bbox(gps_sub)[c("ymin", "ymax")]) +
-  theme_map() +
-  labs(title = "Rota Circular | Horário: {format(frame_time, '%H:%M:%S')}") +
-  shadow_wake(wake_length = 0.05, alpha = FALSE) +
+  #coord_sf(xlim = sf::st_bbox(gps_sub)[c("xmin", "xmax")],
+           #ylim = sf::st_bbox(gps_sub)[c("ymin", "ymax")], expand = FALSE) +
+  theme_void() +
+  labs(title = "Operação BuzUFBA | Horário: {format(frame_time, '%H:%M:%S')}") +
+  #shadow_wake(wake_length = 0.05, alpha = FALSE) +
   transition_time(timestamp_local) +
   ease_aes('linear')
 
-anim_save(animation = animate(anim, fps = 30, nframes = 300, duration = 10), 
+anim_save(animation = animate(anim, fps = 24, nframes = 240, duration = 6, 
+                              width = 640, height = 480, rewind = FALSE), 
           filename = "data_testes/anim_circular.gif", renderer = gifski_renderer())
