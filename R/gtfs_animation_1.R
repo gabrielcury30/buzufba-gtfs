@@ -1,7 +1,8 @@
 # RASTREAMENTO E ANIMAÇÃO - GTFS BUZUFBA (MODELO CIRCULAR)
 library(gtfs2gps); library(geobr); library(ggplot2); library(gganimate)
 library(ggthemes); library(sf); library(viridis); library(gifski)
-library(dplyr); library(data.table); library(lubridate); library(ggspatial)
+library(dplyr); library(data.table); library(lubridate); library(ggspatial) 
+library(plyr)
 
 # Download do limite de Salvador
 salvador <- geobr::read_municipality(code_muni = 2927408, year = 2020) %>% 
@@ -34,6 +35,24 @@ gps_dt$timestamp_local <- as.POSIXct(as.character(gps_dt$timestamp), format = "%
 # Converte o GPS nativamente para sf (Melhor prática para bounding box)
 gps_sf <- sf::st_as_sf(gps_dt, coords = c("shape_pt_lon", "shape_pt_lat"), crs = 4326, remove = FALSE)
 
+mapa <- c("SHP_B1_CIRCULAR_N" = "SHP_B1_CIRCULAR", 
+          "SHP_B2_CIRCULAR_N" = "SHP_B2_CIRCULAR",
+          "SHP_B3_CIRCULAR_N" = "SHP_B3_CIRCULAR",
+          "SHP_B4_CIRCULAR_N" = "SHP_B4_CIRCULAR",
+          "SHP_B5_CIRCULAR_N" = "SHP_B5_CIRCULAR")
+
+shapes_sf$shape_id <- mapvalues(
+  shapes_sf$shape_id,
+  from = names(mapa),
+  to = mapa
+)
+
+gps_sf$shape_id <- mapvalues(
+  gps_sf$shape_id,
+  from = names(mapa),
+  to = mapa
+)
+
 # Animação
 gps_sub   <- gps_sf %>% mutate(cumdist = as.numeric(cumdist))
 shapes_sub <- shapes_sf
@@ -51,6 +70,6 @@ anim <- ggplot() + annotation_map_tile(type = "cartolight", zoom = 16) +
   transition_time(timestamp_local) +
   ease_aes('linear')
 
-anim_save(animation = animate(anim, fps = 24, nframes = 240, duration = 6, 
+anim_save(animation = animate(anim, nframes = 1500, 
                               width = 640, height = 480, rewind = FALSE), 
           filename = "data_testes/anim_circular.gif", renderer = gifski_renderer())
