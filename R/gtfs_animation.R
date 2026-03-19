@@ -10,7 +10,7 @@ salvador <- geobr::read_municipality(code_muni = 2927408, year = 2020) %>%
 
 ###### PROCESSAMENTO DOS DADOS DO TRANSPORTE
 # Lê o GTFS
-gtfs_dt <- gtfs2gps::read_gtfs("data/buzufba_gtfs.zip")
+gtfs_dt <- gtfs2gps::read_gtfs("data/gtfs/buzufba_gtfs.zip")
 
 # Filtrar operação da segunda-feira
 gtfs_dt <- gtfstools::filter_by_weekday(gtfs_dt, "monday", keep = TRUE)
@@ -72,4 +72,4 @@ anim <- ggplot() + annotation_map_tile(type = "cartolight", zoom = 16) +
 
 anim_save(animation = animate(anim, nframes = 1500, 
                               width = 640, height = 480, rewind = FALSE), 
-          filename = "data_testes/anim_circular.gif", renderer = gifski_renderer())
+          filename = "data/figs/anim_circular.gif", renderer = gifski_renderer())

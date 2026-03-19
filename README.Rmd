@@ -12,64 +12,68 @@ O BUZUFBA (Bus UFBA) é o sistema de ônibus gratuito que conecta os diversos ca
 
 ## Rotas
 
-| Rota   | Itinerário                                      |
-|--------|-------------------------------------------------|
-| **B1** | Ondina - Canela - São Lázaro                    |
-| **B2** | Ondina - Canela - Vitória - Graça (Rota Longa)  |
-| **B3** | Ondina - Garibaldi - Canela - Av. 7 de Setembro |
-| **B4** | Ondina - Piedade - Vitória - Graça              |
-| **B5** | Federação - Ondina - Canela - Vitória           |
+| Rota   | Itinerário                                                |
+|--------|-----------------------------------------------------------|
+| **B1** | Ondina - Canela - São Lázaro (Circular)                   |
+| **B2** | Ondina - Canela - Vitória - Graça (Circular)              |
+| **B3** | Ondina - Garibaldi - Canela - Av. 7 de Setembro (Circular)|
+| **B4** | Ondina - Piedade - Vitória - Graça (Circular)             |
+| **B5** | Federação - Ondina - Canela - Vitória (Circular)          |
 
 ## Estrutura do projeto
 
 ```
 buzufba-gtfs/
 ├── R/
-│   ├── script-gtfs.R          # Script principal: gera o feed GTFS completo
-│   └── gtfs-animation.R       # Script de visualização: gera GIF animado das rotas
+│   ├── gtfs.R                 # Script principal: gera o feed GTFS completo
+│   └── gtfs_animation.R       # Script de visualização: gera GIF animado das rotas
 ├── data/
-│   ├── buzufba_gtfs.zip       # Feed GTFS gerado
-│   └── gtfs-anim.gif          # Animação das rotas
+│   ├── figs/
+│   │    ├── anim_circular.gif  # GIF das rotas do BuzUFBA
+│   │
+│   ├── gtfs/
+│         ├── buzufba_gtfs.zip   # GTFS gerado pelo script principal
+│         
 ├── README.Rmd             # Fonte do README (R Markdown)
 ├── README.md              # Gerado a partir do README.Rmd
-├── buzufba-gtfs.Rproj     # Projeto RStudio
 ```
 
 ## Pré-requisitos
 
-### Geração do GTFS (`R/script-gtfs.R`)
+### Geração do GTFS (`R/gtfs.R`)
 
 ``` r
-install.packages(c("gtfstools", "tidyverse", "lubridate", "data.table", "osrm", "sf", "mapview", "dplyr"))
+install.packages(c("gtfstools", "tidyverse", "data.table", "osrm", "sf", "mapview"))
 ```
 
-### Animação (`R/gtfs-animation.R`)
+### Animação (`R/gtfs_animation.R`)
 
 ``` r
-install.packages(c("gtfs2gps", "geobr", "ggplot2", "gganimate", "data.table", "ggthemes", "sf", "viridis", "sfheaders", "units", "gifski"))
+install.packages(c("gtfs2gps", "geobr", "ggplot2", "gganimate", "ggthemes", "sf", "viridis", "gifski", "dplyr", "data.table", "lubridate", "ggspatial",
+"plyr"))
 ```
 
 ## Como usar
 
 ### Gerar o feed GTFS
 
-O script `R/script-gtfs.R` monta todas as tabelas do GTFS (agency, routes, stops, trips, stop_times, calendar, shapes, feed_info) e exporta como `.zip`:
+O script `R/gtfs.R` monta todas as tabelas do GTFS (agency, routes, stops, trips, stop_times, calendar, shapes, feed_info) e exporta como `.zip`:
 
 ``` r
-source("R/script-gtfs.R")
+source("R/gtfs.R")
 ```
 
 > O script utiliza a API do OSRM para traçar os shapes das rotas, então requer conexão com a internet.
 
 ### Gerar a animação
 
-Após gerar o GTFS, o script `R/gtfs-animation.R` cria um GIF animado mostrando os ônibus percorrendo as rotas ao longo do dia:
+Após gerar o GTFS, o script `R/gtfs_animation.R` cria um GIF animado mostrando os ônibus percorrendo as rotas ao longo da segunda-feira de 06:00:00 até 22:10:00:
 
 ``` r
 source("R/gtfs-animation.R")
 ```
 
-O GIF será salvo em `data/gtfs-anim.gif`.
+O GIF será salvo em `data/figs/anim_circular.gif`.
 
 ## Sobre o GTFS
 

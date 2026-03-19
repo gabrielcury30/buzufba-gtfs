@@ -296,7 +296,7 @@ validator_path <- download_validator(tempdir())
 gtfstools::validate_gtfs(gtfs, "validation_result", validator_path)
 
 if (!dir.exists("data")) dir.create("data")
-write_gtfs(gtfs, "data/buzufba_gtfs.zip")
+write_gtfs(gtfs, "data/gtfs/buzufba_gtfs.zip")
 message("GTFS salvo em 'data/buzufba_gtfs.zip'.")
 
 investigar_rota <- function(gtfs_data) {
