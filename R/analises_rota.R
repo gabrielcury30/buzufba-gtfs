@@ -91,4 +91,6 @@ ggplot() +
   labs(color = "mode", title = paste(from_pick, "→", to_pick), subtitle = paste("Data e hora:", format(departure_datetime, "%d/%m/%Y %H:%M"))) +
   theme_minimal()
 
+ggsave("data/figs/itinerario.png", dpi = 500)
+
 stop_r5(r5r_network)
