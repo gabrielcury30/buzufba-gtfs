@@ -23,10 +23,9 @@ pod <- data.frame(
 )
 
 departure_datetime <- as.POSIXct("2026-04-29 08:50:00", tz = "America/Bahia")
-time_window <- 10L
+time_window <- 20L
 max_rides <- 1L
 mode <- c("WALK", "TRANSIT")
-max_walk_time <- 10L
 max_trip_duration <- 150
 percentiles <- c(25, 50, 75, 90)
 
@@ -37,9 +36,9 @@ ttm <- travel_time_matrix(
     departure_datetime = departure_datetime,
     mode = mode,
     max_rides = max_rides,
-    max_walk_time = max_walk_time,
     percentiles = percentiles,
-    max_trip_duration = max_trip_duration
+    max_trip_duration = max_trip_duration,
+    time_window = time_window
 )
 
 ettm <- expanded_travel_time_matrix(
@@ -49,9 +48,9 @@ ettm <- expanded_travel_time_matrix(
     mode = mode,
     departure_datetime = departure_datetime,
     max_rides = max_rides,
-    max_walk_time = max_walk_time,
     max_trip_duration = max_trip_duration,
-    breakdown = TRUE
+    breakdown = TRUE,
+    time_window = time_window
 )
 
 ettm_walk <- ettm %>% 
@@ -65,9 +64,9 @@ det <- detailed_itineraries(
   mode = mode,
   departure_datetime = departure_datetime,
   max_rides = max_rides,
-  max_walk_time = max_walk_time,
   max_trip_duration = max_trip_duration,
-  all_to_all = TRUE
+  all_to_all = TRUE,
+  time_window = time_window
 )
 
 r5r_gui(r5r_network)
