@@ -113,7 +113,7 @@ cat(sprintf("Pares com p50 >= 10min (intervalo curto):  %.1f%%\n", prop_inviavel
 
 # Heatmap de imprevisibilidade (variância interpercentil)
 plot_heatmap_variancia <- ttm_analise %>%
-  ggplot(aes(x = from_id, y = to_id, fill = variancia_ip)) +
+  ggplot(aes(x = to_id, y = from_id, fill = variancia_ip)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
     name   = "Variância\n(p90 - p25, min)",
@@ -123,8 +123,8 @@ plot_heatmap_variancia <- ttm_analise %>%
   labs(
     title    = "Imprevisibilidade do Tempo de Viagem entre Unidades da UFBA",
     subtitle = paste("Partida:", format(departure_datetime, "%d/%m/%Y %H:%M")),
-    x        = "Origem",
-    y        = "Destino",
+    x        = "Destino",
+    y        = "Origem",
     caption  = "Valores altos = chegada imprevisível. Crítico para intervalos curtos entre aulas."
   ) +
   theme_minimal(base_size = 10) +
@@ -140,7 +140,7 @@ ggsave("data/figs/heatmap_variancia.png", plot_heatmap_variancia,
 
 # Heatmap de tempo mediano (p50)
 plot_heatmap_p50 <- ttm_analise %>%
-  ggplot(aes(x = from_id, y = to_id, fill = travel_time_p50)) +
+  ggplot(aes(x = to_id, y = from_id, fill = travel_time_p50)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
     name   = "Tempo mediano\n(min)",
@@ -150,8 +150,8 @@ plot_heatmap_p50 <- ttm_analise %>%
   labs(
     title    = "Tempo de Viagem Mediano (p50) entre Unidades da UFBA",
     subtitle = paste("Partida:", format(departure_datetime, "%d/%m/%Y %H:%M")),
-    x        = "Origem",
-    y        = "Destino"
+    x        = "Destino",
+    y        = "Origem"
   ) +
   theme_minimal(base_size = 10) +
   theme(
