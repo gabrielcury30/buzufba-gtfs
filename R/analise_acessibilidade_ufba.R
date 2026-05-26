@@ -27,11 +27,11 @@ pod <- data.frame(
 )
 
 # Parametros
-departure_datetime <- as.POSIXct("2026-05-20 08:50:00", tz = "America/Bahia")
+departure_datetime <- as.POSIXct("2026-05-20 08:40:00", tz = "America/Bahia")
 time_window        <- 20L
 max_rides          <- 1L
 mode               <- c("WALK", "TRANSIT")
-max_trip_duration  <- 150
+max_trip_duration  <- 120
 percentiles        <- c(25, 50, 75, 90)
 
 # Funcoes r5r
