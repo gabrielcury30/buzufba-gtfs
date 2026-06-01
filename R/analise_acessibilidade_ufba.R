@@ -10,6 +10,7 @@ library(viridis)
 library(r5rgui)
 library(tidyr)
 library(scales)
+library(forcats)
 
 # Rede e pares OD
 r5r_network <- build_network("data/r5r")
@@ -73,16 +74,16 @@ det <- detailed_itineraries(
 
 
 # ANÁLISE 1 — MATRIZ O-D: PERCENTIS E IMPREVISIBILIDADE
-# Objetivo: identificar pares com alto tempo e/ou alta variância entre
+# Objetivo: identificar pares com alto tempo e/ou alta amplitude entre
 # percentis (p25 vs p90), revelando rotas onde a chegada no horário
 # é imprevisível — crítico para intervalos curtos entre aulas.
 
-# Remove pares sem solução (NA) e calcula variância interpercentil
+# Remove pares sem solução (NA) e calcula amplitude interpercentil
 ttm_analise <- ttm %>%
   filter(!is.na(travel_time_p50)) %>%
   filter(from_id != to_id) %>%
   mutate(
-    variancia_ip  = travel_time_p90 - travel_time_p25,   # amplitude p25–p90
+    amplitude_ip  = travel_time_p90 - travel_time_p25,   # amplitude p25–p90
     inviavel_20min = travel_time_p50 >= 20,              # inviável num intervalo típico de 20min
     inviavel_10min = travel_time_p50 >= 10               # crítico num intervalo de 10min
   )
@@ -91,15 +92,15 @@ ttm_analise <- ttm %>%
 pares_mais_lentos <- ttm_analise %>%
   arrange(desc(travel_time_p50)) %>%
   slice_head(n = 20) %>%
-  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p75, travel_time_p90, variancia_ip)
+  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p75, travel_time_p90, amplitude_ip)
 
 View(pares_mais_lentos)
 
-# Top 20 pares mais imprevisíveis (maior variância interpercentil)
+# Top 20 pares mais imprevisíveis (maior amplitude interpercentil)
 pares_mais_imprevisiveis <- ttm_analise %>%
-  arrange(desc(variancia_ip)) %>%
+  arrange(desc(amplitude_ip)) %>%
   slice_head(n = 20) %>%
-  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, variancia_ip)
+  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, amplitude_ip)
 
 View(pares_mais_imprevisiveis)
 
@@ -111,12 +112,12 @@ cat(sprintf("\n=== INVIABILIDADE ===\n"))
 cat(sprintf("Pares com p50 >= 20min (intervalo típico): %.1f%%\n", prop_inviavel_20 * 100))
 cat(sprintf("Pares com p50 >= 10min (intervalo curto):  %.1f%%\n", prop_inviavel_10 * 100))
 
-# Heatmap de imprevisibilidade (variância interpercentil)
-plot_heatmap_variancia <- ttm_analise %>%
-  ggplot(aes(x = to_id, y = from_id, fill = variancia_ip)) +
+# Heatmap de imprevisibilidade (amplitude interpercentil)
+plot_heatmap_amplitude <- ttm_analise %>%
+  ggplot(aes(x = to_id, y = from_id, fill = amplitude_ip)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
-    name   = "Variância\n(p90 - p25, min)",
+    name   = "Amplitude\n(p90 - p25, min)",
     option = "magma",
     na.value = "grey90"
   ) +
@@ -135,11 +136,19 @@ plot_heatmap_variancia <- ttm_analise %>%
     legend.position = "right"
   )
 
-ggsave("data/figs/heatmap_variancia.png", plot_heatmap_variancia,
+ggsave("data/figs/heatmap_amplitude.png", plot_heatmap_amplitude,
        width = 14, height = 12, dpi = 150)
+
+ordem_mediana <- ttm_analise %>%
+  group_by(from_id) %>%
+  summarise(mediana_global = median(travel_time_p50, na.rm = TRUE)) %>%
+  arrange(mediana_global) %>%
+  pull(from_id)
 
 # Heatmap de tempo mediano (p50)
 plot_heatmap_p50 <- ttm_analise %>%
+  mutate(from_id = factor(from_id, levels = ordem_mediana),
+        to_id = factor(to_id, levels = ordem_mediana)) %>% 
   ggplot(aes(x = to_id, y = from_id, fill = travel_time_p50)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
@@ -172,7 +181,7 @@ ggsave("data/figs/heatmap_p50.png", plot_heatmap_p50,
 pares_inviavel_20 <- ttm_analise %>%
   filter(inviavel_20min) %>%
   arrange(desc(travel_time_p50)) %>%
-  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, variancia_ip)
+  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, amplitude_ip)
 
 View(pares_inviavel_20)
 
@@ -187,7 +196,7 @@ View(ranking_origens_problematicas_20)
 pares_inviavel_10 <- ttm_analise %>%
   filter(inviavel_10min) %>%
   arrange(desc(travel_time_p50)) %>%
-  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, variancia_ip)
+  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, amplitude_ip)
 
 # Gráfico de barras: unidades problemáticas como origem
 plot_origens_problematicas <- ranking_origens_problematicas_20 %>%
@@ -461,7 +470,7 @@ pares_para_gui <- bind_rows(
     mutate(motivo = "Mais lento (p50)"),
   pares_mais_imprevisiveis %>%
     slice_head(n = 10) %>%
-    mutate(motivo = "Mais imprevisível (variância)"),
+    mutate(motivo = "Mais imprevisível (amplitude)"),
   pares_transit_lento %>%
     slice_head(n = 10) %>%
     mutate(motivo = "Transit mais lento que walk"),
