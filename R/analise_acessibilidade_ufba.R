@@ -25,7 +25,7 @@ pod <- data.frame(
   lat = st_coordinates(edif_points)[, 2]
 )
 
-departure_datetime <- as.POSIXct("2026-06-02 08:50:00", tz = "America/Bahia")
+departure_datetime <- as.POSIXct("2026-06-04 08:50:00", tz = "America/Bahia")
 time_window        <- 20L
 max_rides          <- 1L
 mode               <- c("WALK", "TRANSIT")
@@ -108,7 +108,7 @@ plot_heatmap_amplitude <- ttm_analise %>%
     legend.position = "right"
   )
 
-ggsave("data/figs/heatmap_amplitude.png", plot_heatmap_amplitude,
+ggsave("data/figs/heatmap_amplitude_quin0850.png", plot_heatmap_amplitude,
        width = 14, height = 12, dpi = 150)
 
 ordem_mediana <- ttm_analise %>%
@@ -140,7 +140,7 @@ plot_heatmap_p50 <- ttm_analise %>%
     plot.title  = element_text(face = "bold")
   )
 
-ggsave("data/figs/heatmap_p50.png", plot_heatmap_p50,
+ggsave("data/figs/heatmap_p50_quin0850.png", plot_heatmap_p50,
        width = 14, height = 12, dpi = 150)
 
 # ANÁLISE 2 — PARES INVIÁVEIS NO INTERVALO DE AULA
@@ -169,7 +169,7 @@ plot_origens_problematicas <- ranking_origens_problematicas_20 %>%
   theme_minimal(base_size = 10) +
   theme(plot.title = element_text(face = "bold"))
 
-ggsave("data/figs/bar_origens_problematicas.png", plot_origens_problematicas,
+ggsave("data/figs/bar_origens_problematicas_quin0850.png", plot_origens_problematicas,
        width = 10, height = 8, dpi = 150)
 
 # ANÁLISE 3 — ÍNDICE DE ACESSIBILIDADE ACUMULATIVA POR UNIDADE
@@ -224,7 +224,7 @@ plot_acumulativo <- acessibilidade_acumulativa_completo %>%
     strip.text = element_text(face = "bold", size = 10) 
   )
 
-ggsave("data/figs/bar_acumulativo.png", plot_acumulativo,
+ggsave("data/figs/bar_acumulativo_quin0850.png", plot_acumulativo,
        width = 12, height = 10, dpi = 150)
 
 # ANÁLISE 4 — PENALIDADE DE ESPERA (waiting_time / total_time)
@@ -259,7 +259,7 @@ plot_espera <- ettm_transit %>%
   theme_minimal(base_size = 11) +
   theme(plot.title = element_text(face = "bold"))
 
-ggsave("data/figs/hist_proporcao_espera.png", plot_espera,
+ggsave("data/figs/hist_proporcao_espera_quin0850.png", plot_espera,
        width = 10, height = 6, dpi = 150)
 
 # ANÁLISE 5 — MODAL INEFICIENTE: TRANSIT MAIS LENTO QUE CAMINHADA
@@ -302,7 +302,7 @@ plot_modal <- comparacao_modal %>%
   theme_minimal(base_size = 11) +
   theme(plot.title = element_text(face = "bold"))
 
-ggsave("data/figs/scatter_modal.png", plot_modal,
+ggsave("data/figs/scatter_modal_quin0850.png", plot_modal,
        width = 10, height = 8, dpi = 150)
 
 r5r_gui(r5r_network)
