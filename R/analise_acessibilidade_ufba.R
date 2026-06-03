@@ -68,8 +68,7 @@ det <- detailed_itineraries(
   time_window        = time_window
 )
 
-
-# ANÁLISE 1 — MATRIZ O-D: PERCENTIS E IMPREVISIBILIDADE
+# ANÁLISE — MATRIZ O-D: PERCENTIS E IMPREVISIBILIDADE
 # Objetivo: identificar pares com alto tempo e/ou alta amplitude entre
 # percentis (p25 vs p90), revelando rotas onde a chegada no horário
 # é imprevisível — crítico para intervalos curtos entre aulas.
@@ -81,10 +80,6 @@ ttm_analise <- ttm %>%
     amplitude_ip  = travel_time_p90 - travel_time_p25,
     inviavel_20min = travel_time_p50 >= 20
   )
-
-prop_inviavel_20 <- mean(ttm_analise$inviavel_20min, na.rm = TRUE)
-
-cat(sprintf("Pares com p50 >= 20min (intervalo típico): %.1f%%\n", prop_inviavel_20 * 100))
 
 plot_heatmap_amplitude <- ttm_analise %>%
   ggplot(aes(x = to_id, y = from_id, fill = amplitude_ip)) +
@@ -143,7 +138,7 @@ plot_heatmap_p50 <- ttm_analise %>%
 ggsave("data/figs/heatmap_p50_quin0850.png", plot_heatmap_p50,
        width = 14, height = 12, dpi = 150)
 
-# ANÁLISE 2 — PARES INVIÁVEIS NO INTERVALO DE AULA
+# ANÁLISE — PARES INVIÁVEIS NO INTERVALO DE AULA
 # Objetivo: encontrar pares de unidades onde não é possível se deslocar
 # dentro do intervalo disponível entre aulas
 
@@ -172,7 +167,7 @@ plot_origens_problematicas <- ranking_origens_problematicas_20 %>%
 ggsave("data/figs/bar_origens_problematicas_quin0850.png", plot_origens_problematicas,
        width = 10, height = 8, dpi = 150)
 
-# ANÁLISE 3 — ÍNDICE DE ACESSIBILIDADE ACUMULATIVA POR UNIDADE
+# ANÁLISE — ÍNDICE DE ACESSIBILIDADE ACUMULATIVA POR UNIDADE
 # Objetivo: para cada unidade, contar quantas outras unidades são alcançáveis
 # dentro de cortes de tempo (15, 20 min). Gera um índice por unidade.
 
@@ -227,7 +222,7 @@ plot_acumulativo <- acessibilidade_acumulativa_completo %>%
 ggsave("data/figs/bar_acumulativo_quin0850.png", plot_acumulativo,
        width = 12, height = 10, dpi = 150)
 
-# ANÁLISE 4 — PENALIDADE DE ESPERA (waiting_time / total_time)
+# ANÁLISE — PENALIDADE DE ESPERA (waiting_time / total_time)
 # Objetivo: para rotas que usam trânsito, identificar onde o tempo de espera
 # representa proporção alta do total — ineficiência do sistema de ônibus.
 
@@ -262,7 +257,7 @@ plot_espera <- ettm_transit %>%
 ggsave("data/figs/hist_proporcao_espera_quin0850.png", plot_espera,
        width = 10, height = 6, dpi = 150)
 
-# ANÁLISE 5 — MODAL INEFICIENTE: TRANSIT MAIS LENTO QUE CAMINHADA
+# ANÁLISE — MODAL INEFICIENTE: TRANSIT MAIS LENTO QUE CAMINHADA
 # Objetivo: identificar pares onde usar o ônibus não economiza tempo
 # versus ir a pé — evidência de ineficiência da oferta de transporte interno.
 
