@@ -25,7 +25,7 @@ pod <- data.frame(
   lat = st_coordinates(edif_points)[, 2]
 )
 
-departure_datetime <- as.POSIXct("2026-06-04 08:50:00", tz = "America/Bahia")
+departure_datetime <- as.POSIXct("2026-06-04 10:40:00", tz = "America/Bahia")
 time_window        <- 20L
 max_rides          <- 1L
 mode               <- c("WALK", "TRANSIT")
@@ -73,12 +73,16 @@ det <- detailed_itineraries(
 # percentis (p25 vs p90), revelando rotas onde a chegada no horário
 # é imprevisível — crítico para intervalos curtos entre aulas.
 
-ttm_analise <- ttm %>%
-  filter(!is.na(travel_time_p50)) %>%
-  filter(from_id != to_id) %>%
+ordem_amplitude <- ttm_analise %>%
+  group_by(from_id) %>%
+  summarise(amplitude_mediana = median(amplitude_ip, na.rm = TRUE)) %>%
+  arrange(desc(amplitude_mediana)) %>%
+  pull(from_id)
+
+ttm_analise <- ttm_analise %>%
   mutate(
-    amplitude_ip  = travel_time_p90 - travel_time_p25,
-    inviavel_20min = travel_time_p50 >= 20
+    from_id = factor(from_id, levels = ordem_amplitude),
+    to_id   = factor(to_id,   levels = ordem_amplitude)  
   )
 
 plot_heatmap_amplitude <- ttm_analise %>%
@@ -118,12 +122,12 @@ plot_heatmap_p50 <- ttm_analise %>%
   ggplot(aes(x = to_id, y = from_id, fill = travel_time_p50)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
-    name   = "Tempo mediano das medianas p(50)\n(min)",
+    name   = "",
     option = "inferno",
     na.value = "grey90"
   ) +
   labs(
-    title    = "Tempo de Viagem Mediano das Medianas(p50) entre Unidades da UFBA",
+    title    = "Tempo de Viagem Mediano(p50) entre Unidades da UFBA",
     subtitle = paste("Partida:", format(departure_datetime, "%d/%m/%Y %H:%M")),
     x        = "Destino",
     y        = "Origem"
@@ -138,40 +142,11 @@ plot_heatmap_p50 <- ttm_analise %>%
 ggsave("data/figs/heatmap_p50_quin0850.png", plot_heatmap_p50,
        width = 14, height = 12, dpi = 150)
 
-# ANÁLISE — PARES INVIÁVEIS NO INTERVALO DE AULA
-# Objetivo: encontrar pares de unidades onde não é possível se deslocar
-# dentro do intervalo disponível entre aulas
-
-pares_inviavel_20 <- ttm_analise %>%
-  filter(inviavel_20min) %>%
-  arrange(desc(travel_time_p50)) %>%
-  select(from_id, to_id, travel_time_p25, travel_time_p50, travel_time_p90, amplitude_ip)
-
-ranking_origens_problematicas_20 <- pares_inviavel_20 %>%
-  count(from_id, name = "pares_inviavel") %>%
-  arrange(desc(pares_inviavel))
-
-plot_origens_problematicas <- ranking_origens_problematicas_20 %>%
-  ggplot(aes(x = reorder(from_id, pares_inviavel), y = pares_inviavel)) +
-  geom_col(fill = "#C0392B", alpha = 0.85) +
-  coord_flip() +
-  labs(
-    title    = "Unidades com Maior Número de Destinos Inacessíveis em 20min",
-    subtitle = paste("Partida:", format(departure_datetime, "%d/%m/%Y %H:%M")),
-    x        = "Unidade de Origem",
-    y        = "Nº de destinos com tempo mediano ≥ 20min"
-  ) +
-  theme_minimal(base_size = 10) +
-  theme(plot.title = element_text(face = "bold"))
-
-ggsave("data/figs/bar_origens_problematicas_quin0850.png", plot_origens_problematicas,
-       width = 10, height = 8, dpi = 150)
-
 # ANÁLISE — ÍNDICE DE ACESSIBILIDADE ACUMULATIVA POR UNIDADE
 # Objetivo: para cada unidade, contar quantas outras unidades são alcançáveis
-# dentro de cortes de tempo (15, 20 min). Gera um índice por unidade.
+# dentro de cortes de tempo (15, 30, 45 min). Gera um índice por unidade.
 
-cortes <- c(15, 20)
+cortes <- c(15, 30, 45)
 
 acessibilidade_acumulativa <- lapply(cortes, function(corte) {
   ttm_analise %>%
@@ -204,7 +179,7 @@ plot_acumulativo <- acessibilidade_acumulativa_completo %>%
     fill = corte_label
   )) +
   geom_col(position = "dodge", alpha = 0.85) +
-  scale_fill_viridis_d(name = "Corte de tempo", option = "plasma") +
+  scale_fill_viridis_d(name = "", option = "plasma") +
   coord_flip() +
   facet_wrap(~corte_label, nrow = 1) + 
   labs(
