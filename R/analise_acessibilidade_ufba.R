@@ -15,12 +15,25 @@ r5r_network <- build_network("data/r5r")
 
 edif <- st_read("data/edif/edif_ufba.gpkg")
 
+edif_sf <- st_sf(
+  osm_id = edif$osm_id,
+  name = edif$name,
+  geom = edif$geom
+)
+
 edif_points <- edif %>%
   st_transform(4326) %>%
   st_point_on_surface()
 
 pod <- data.frame(
   id  = edif_points$name,
+  lon = st_coordinates(edif_points)[, 1],
+  lat = st_coordinates(edif_points)[, 2]
+)
+
+pod_r5rgui <- data.frame(
+  id = edif$osm_id,
+  name  = edif_points$name,
   lon = st_coordinates(edif_points)[, 1],
   lat = st_coordinates(edif_points)[, 2]
 )
@@ -275,6 +288,8 @@ plot_modal <- comparacao_modal %>%
 ggsave("data/figs/scatter_modal_quin0850.png", plot_modal,
        width = 10, height = 8, dpi = 150)
 
-r5r_gui(r5r_network)
+r5r_gui(r5r_network = r5r_network,
+        location_choices = pod_r5rgui,
+        unit_polygons = edif_sf)
 
 stop_r5(r5r_network)
