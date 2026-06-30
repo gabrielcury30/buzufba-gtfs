@@ -86,19 +86,22 @@ det <- detailed_itineraries(
 # percentis (p25 vs p90), revelando rotas onde a chegada no horário
 # é imprevisível — crítico para intervalos curtos entre aulas.
 
+ttm_analise <- ttm %>%
+  mutate(amplitude_ip = travel_time_p90 - travel_time_p25)
+
 ordem_amplitude <- ttm_analise %>%
   group_by(from_id) %>%
   summarise(amplitude_mediana = median(amplitude_ip, na.rm = TRUE)) %>%
   arrange(desc(amplitude_mediana)) %>%
   pull(from_id)
 
-ttm_analise <- ttm_analise %>%
+ttm_heatmap_amplitude <- ttm_analise %>%
   mutate(
     from_id = factor(from_id, levels = ordem_amplitude),
-    to_id   = factor(to_id,   levels = ordem_amplitude)  
+    to_id   = factor(to_id,   levels = ordem_amplitude)
   )
 
-plot_heatmap_amplitude <- ttm_analise %>%
+plot_heatmap_amplitude <- ttm_heatmap_amplitude %>%
   ggplot(aes(x = to_id, y = from_id, fill = amplitude_ip)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
@@ -131,7 +134,7 @@ ordem_mediana <- ttm_analise %>%
 
 plot_heatmap_p50 <- ttm_analise %>%
   mutate(from_id = factor(from_id, levels = ordem_mediana),
-        to_id = factor(to_id, levels = ordem_mediana)) %>% 
+         to_id = factor(to_id, levels = ordem_mediana)) %>% 
   ggplot(aes(x = to_id, y = from_id, fill = travel_time_p50)) +
   geom_tile(color = "white", linewidth = 0.3) +
   scale_fill_viridis_c(
