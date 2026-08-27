@@ -21,4 +21,4 @@ Thumbs.db
 validation_result/
 .positai
 
-./rosm.cache/
+rosm.cache/
