@@ -1,0 +1,6 @@
+---
+title: "Documentação da Criação do GTFS do Buzufba"
+author: "Gabriel Amazonas Cury"
+format: html
+editor: visual
+---
