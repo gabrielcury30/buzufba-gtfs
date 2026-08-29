@@ -22,3 +22,11 @@ validation_result/
 .positai
 
 rosm.cache/
+
+# Quarto
+*.html
+*.pdf
+*.tex
+
+# Posit Connect Cloud
+_publish.yml
