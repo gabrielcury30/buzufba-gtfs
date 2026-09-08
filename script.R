@@ -7,6 +7,7 @@ library(leaftime)
 library(geojsonio)
 library(htmlwidgets)
 library(stinepack)
+library(sf)
 
 feed_path    <- "data/gtfs/buzufba_gtfs.zip"
 transit_type <- 3
@@ -70,6 +71,18 @@ st <- gtfs$stop_times %>% filter(trip_id %in% trip_ids) %>%
 unique_stops <- st %>%
   distinct(stop_id, stop_name, stop_lat, stop_lon)
 
+##### Prepara geometrias das rotas (shapes) #####
+# Converte para sf, agrupa por rota e simplifica
+route_shapes_sf <- gtfs$shapes %>%
+  filter(shape_id %in% trips_shapes$shape_id) %>%
+  inner_join(trips_shapes %>% distinct(shape_id, route_id), by = "shape_id") %>%
+  st_as_sf(coords = c("shape_pt_lon", "shape_pt_lat"), crs = 4326) %>%
+  group_by(route_id, shape_id) %>%
+  summarise(do_union = FALSE, .groups = "drop") %>%
+  st_cast("LINESTRING") %>%
+  st_simplify(dTolerance = 0.0005) %>% # Aumentada tolerância para mais simplificação
+  mutate(color = unname(route_cols[route_id]))
+
 ##### 3) Posições interpoladas em passos regulares (com rastro) #####
 make_points <- function(tr) {
   shp <- shapes_dist %>% filter(shape_id == tr$shape_id[1]) %>%
@@ -118,8 +131,18 @@ geo <- geojsonio::geojson_json(pts, lat = "lat", lon = "lon")
 ##### 4) Mapa com timeline (estilo do vídeo) #####
 map <- leaflet() %>%
   addProviderTiles("Esri.WorldStreetMap") %>%
-  setView(lng = -38.510, lat = -12.999, zoom = 13) %>%
-  
+  setView(lng = -38.510, lat = -12.999, zoom = 13)
+
+# Adiciona geometrias das rotas simplificadas
+map <- map %>% addPolylines(
+  data = route_shapes_sf,
+  color = ~color,
+  weight = 3,
+  opacity = 0.3, # Opacidade mais leve
+  group = "Rotas"
+)
+
+map <- map %>%
   # Adiciona as paradas estáticas com hover
   addCircleMarkers(
     data = unique_stops,
