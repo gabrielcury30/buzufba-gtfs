@@ -85,8 +85,11 @@ route_shapes_sf <- gtfs$shapes %>%
 
 ##### 3) Posições interpoladas em passos regulares (com rastro) #####
 make_points <- function(tr) {
+  # ... (mantendo o código original para interpolação)
+  # Apenas ajustando o retorno para incluir route_id
+  
   shp <- shapes_dist %>% filter(shape_id == tr$shape_id[1]) %>%
-    select(dist = shape_dist_traveled,          # <-- CORREÇÃO: renomeia p/ dist
+    select(dist = shape_dist_traveled,
            lat = shape_pt_lat, lon = shape_pt_lon) %>%
     mutate(time = as.POSIXct(NA_real_, origin = "1970-01-01"))
   
@@ -116,7 +119,8 @@ make_points <- function(tr) {
                    "%Y-%m-%dT%H:%M:%S"),
     end   = format(as.POSIXct(xs + trail_sec, origin = "1970-01-01", tz = "America/Bahia"),
                    "%Y-%m-%dT%H:%M:%S"),
-    color = unname(route_cols[tr$route_id[1]])
+    color = unname(route_cols[tr$route_id[1]]),
+    route_id = tr$route_id[1] # Adicionado
   )
 }
 
@@ -126,70 +130,56 @@ t1 <- format(as.POSIXct(paste(dep_date, max_arv_time), tz = "America/Bahia"), "%
 pts <- bind_rows(lapply(split(trips_shapes, trips_shapes$trip_id), make_points)) %>%
   filter(start >= t0, start <= t1)
 
-geo <- geojsonio::geojson_json(pts, lat = "lat", lon = "lon")
-
-##### 4) Mapa com timeline (estilo do vídeo) #####
+##### 4) Mapa com timeline #####
 map <- leaflet() %>%
   addProviderTiles("Esri.WorldStreetMap") %>%
   setView(lng = -38.510, lat = -12.999, zoom = 13)
 
-# Adiciona geometrias das rotas simplificadas
-map <- map %>% addPolylines(
-  data = route_shapes_sf,
-  color = ~color,
-  weight = 3,
-  opacity = 0.3, # Opacidade mais leve
-  group = "Rotas"
+# Adiciona geometrias das rotas por grupo (para layersControl)
+for (r_id in names(route_cols)) {
+  map <- map %>% addPolylines(
+    data = route_shapes_sf %>% filter(route_id == r_id),
+    color = unname(route_cols[r_id]),
+    weight = 3, opacity = 0.3, group = r_id
+  )
+}
+
+# Adiciona UM player para todos os pontos animados
+map <- map %>% addTimeline(
+  data = geojsonio::geojson_json(pts, lat = "lat", lon = "lon"),
+  timelineOpts = timelineOptions(
+    pointToLayer = htmlwidgets::JS("
+      function(data, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 6, weight: 1,
+          color: data.properties.color,
+          fillColor: data.properties.color,
+          fillOpacity: 0.7
+        });
+      }")
+  ),
+  sliderOpts = sliderOptions(
+    position   = "bottomleft",
+    duration   = 90000,
+    step       = 60000,
+    showTicks  = FALSE,
+    formatOutput = htmlwidgets::JS("
+      function(date) {
+        var d = new Date(date);
+        return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+      }")
+  )
 )
 
 map <- map %>%
-  # Adiciona as paradas estáticas com hover
   addCircleMarkers(
-    data = unique_stops,
-    lng = ~stop_lon,
-    lat = ~stop_lat,
-    radius = 5,
-    color = "#2C3E50",       # Cor da borda
-    fillColor = "#FFFFFF",   # Cor do preenchimento
-    fillOpacity = 0.9,
-    weight = 1.5,
-    label = ~stop_name,      # Hover / Tooltip com o nome da parada
-    labelOptions = labelOptions(
-      noHide = FALSE,        # Exibe apenas ao passar o mouse
-      direction = "auto",
-      style = list(
-        "font-family" = "sans-serif",
-        "font-size" = "12px",
-        "font-weight" = "bold",
-        "padding" = "4px 8px"
-      )
-    )
+    data = unique_stops, lng = ~stop_lon, lat = ~stop_lat,
+    radius = 5, color = "#2C3E50", fillColor = "#FFFFFF",
+    fillOpacity = 0.9, weight = 1.5, label = ~stop_name
   ) %>%
-  
-  addTimeline(
-    data = geo,
-    timelineOpts = timelineOptions(
-      pointToLayer = htmlwidgets::JS("
-        function(data, latlng) {
-          return L.circleMarker(latlng, {
-            radius: 6, weight: 1,
-            color: data.properties.color,
-            fillColor: data.properties.color,
-            fillOpacity: 0.7
-          });
-        }")
-    ),
-    sliderOpts = sliderOptions(
-      position   = "bottomleft",
-      duration   = 90000,
-      step       = 60000,
-      showTicks  = FALSE,
-      formatOutput = htmlwidgets::JS("
-        function(date) {
-          var d = new Date(date);
-          return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-        }")
-    )
+  addLayersControl(
+    overlayGroups = names(route_cols),
+    options = layersControlOptions(collapsed = FALSE)
   )
 
 map
