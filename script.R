@@ -149,14 +149,18 @@ map <- map %>% addTimeline(
   data = geojsonio::geojson_json(pts, lat = "lat", lon = "lon"),
   timelineOpts = timelineOptions(
     pointToLayer = htmlwidgets::JS("
-      function(data, latlng) {
-        return L.circleMarker(latlng, {
-          radius: 6, weight: 1,
-          color: data.properties.color,
-          fillColor: data.properties.color,
-          fillOpacity: 0.7
-        });
-      }")
+function(data, latlng) {
+  var m = L.circleMarker(latlng, {
+    radius: 6, weight: 1,
+    color: data.properties.color,
+    fillColor: data.properties.color,
+    fillOpacity: 0.7
+  });
+  var rid = data.properties.route_id;
+  window.__routeMarkers = window.__routeMarkers || {};
+  (window.__routeMarkers[rid] = window.__routeMarkers[rid] || []).push(m);
+  return m;
+}")
   ),
   sliderOpts = sliderOptions(
     position   = "bottomleft",
@@ -183,4 +187,30 @@ map <- map %>%
   )
 
 map
+
+map <- map %>% htmlwidgets::onRender(htmlwidgets::JS("
+function(el, x) {
+  var setVisible = function(rid, vis) {
+    var reg = window.__routeMarkers || {};
+    var ms  = reg[rid] || [];
+    for (var i = 0; i < ms.length; i++) {
+      if (vis) {
+        ms[i].setStyle({ stroke: true,  fill: true,  opacity: 1, fillOpacity: 0.7 });
+      } else {
+        ms[i].setStyle({ stroke: false, fill: false, opacity: 0, fillOpacity: 0 });
+      }
+    }
+  };
+  el.addEventListener('change', function(ev) {
+    var t = ev.target;
+    if (!t || t.tagName !== 'INPUT' || t.type !== 'checkbox') return;
+    var lbl = t.parentElement;
+    while (lbl && lbl.tagName !== 'LABEL') lbl = lbl.parentElement;
+    if (!lbl) return;
+    var name = (lbl.textContent || '').trim();
+    setVisible(name, t.checked);
+  });
+}
+"))
+
 htmlwidgets::saveWidget(map, "buzufba_timeline.html", selfcontained = TRUE)
