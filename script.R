@@ -150,16 +150,13 @@ map <- map %>% addTimeline(
   timelineOpts = timelineOptions(
     pointToLayer = htmlwidgets::JS("
 function(data, latlng) {
-  var m = L.circleMarker(latlng, {
+  return L.circleMarker(latlng, {
     radius: 6, weight: 1,
     color: data.properties.color,
     fillColor: data.properties.color,
-    fillOpacity: 0.7
+    fillOpacity: 0.7,
+    className: 'rt-' + data.properties.route_id
   });
-  var rid = data.properties.route_id;
-  window.__routeMarkers = window.__routeMarkers || {};
-  (window.__routeMarkers[rid] = window.__routeMarkers[rid] || []).push(m);
-  return m;
 }")
   ),
   sliderOpts = sliderOptions(
@@ -190,26 +187,31 @@ map
 
 map <- map %>% htmlwidgets::onRender(htmlwidgets::JS("
 function(el, x) {
-  var setVisible = function(rid, vis) {
-    var reg = window.__routeMarkers || {};
-    var ms  = reg[rid] || [];
-    for (var i = 0; i < ms.length; i++) {
-      if (vis) {
-        ms[i].setStyle({ stroke: true,  fill: true,  opacity: 1, fillOpacity: 0.7 });
-      } else {
-        ms[i].setStyle({ stroke: false, fill: false, opacity: 0, fillOpacity: 0 });
-      }
+  var styleEl = document.createElement('style');
+  styleEl.setAttribute('id', 'routeHideStyle');
+  document.head.appendChild(styleEl);
+
+  var refresh = function() {
+    var inputs = el.querySelectorAll('.leaflet-control-layers input[type=checkbox]');
+    var css = '';
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].checked) continue;
+      var lbl = inputs[i].parentElement;
+      while (lbl && lbl.tagName !== 'LABEL') lbl = lbl.parentElement;
+      if (!lbl) continue;
+      var name = (lbl.textContent || '').trim();
+      css += '.rt-' + name + '{display:none!important;}';
     }
+    styleEl.textContent = css;
   };
+
   el.addEventListener('change', function(ev) {
     var t = ev.target;
     if (!t || t.tagName !== 'INPUT' || t.type !== 'checkbox') return;
-    var lbl = t.parentElement;
-    while (lbl && lbl.tagName !== 'LABEL') lbl = lbl.parentElement;
-    if (!lbl) return;
-    var name = (lbl.textContent || '').trim();
-    setVisible(name, t.checked);
+    refresh();
   });
+
+  refresh();
 }
 "))
 
