@@ -27,7 +27,6 @@ validation_result/
 rosm.cache/
 
 # Quarto
-*.html
 *.pdf
 *.tex
 
