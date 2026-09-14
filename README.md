@@ -7,32 +7,35 @@
 [![R-Version](https://img.shields.io/badge/R-%24%3E%3D%204.0-blue.svg)](https://www.r-project.org/)
 [![GTFS-Standard](https://img.shields.io/badge/GTFS-v2.0-brightgreen.svg)](https://gtfs.org/)
 [![Dependency-R5R](https://img.shields.io/badge/Engine-r5r%20%2F%20R5-orange.svg)](https://github.com/ipeaGIT/r5r)
-<!--[![License-MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)-->
+[![License-MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Este repositório hospeda um pipeline completo de Engenharia de Dados de Transporte e Planejamento Urbano. Ele foi desenvolvido para mapear programaticamente o **BUZUFBA** (sistema de transporte interno da UFBA), gerar um feed padronizado **GTFS**, construir uma rede de transporte multimodal e realizar simulações e análises espaciais de acessibilidade urbana aos campi da universidade.
 
 ---
 
 ## 📌 Índice
-- [1. Sobre o BUZUFBA](#-1-sobre-o-buzufba)
-- [2. Rotas Operacionais](#-2-rotas-operacionais)
-- [3. Arquitetura do Repositório](#-3-arquitetura-do-repositório)
-- [4. Requisitos de Infraestrutura & Software](#-4-requisitos-de-infraestrutura--software)
-- [5. Como Utilizar o Pipeline](#-5-como-utilizar-o-pipeline)
+- [1. Sobre o BUZUFBA](#sobre)
+- [2. Rotas Operacionais](#rotas)
+- [3. Arquitetura do Repositório](#arquitetura)
+- [4. Requisitos de Infraestrutura & Software](#requisitos)
+- [5. Como Utilizar o Pipeline](#como-utilizar)
   - [Etapa 1: Geração de GTFS](#etapa-1-geração-de-gtfs)
   - [Etapa 2: Análise de Acessibilidade Espacial](#etapa-2-análise-de-acessibilidade-espacial)
   - [Etapa 3: Animação e Simulação Dinâmica](#etapa-3-animação-e-simulação-dinâmica)
-
-<!-- [6. Como Contribuir](#-6-como-contribuir)
-- [7. Licença](#-7-licença)-->
+- [6. Como Contribuir](#como-contribuir)
+- [7. Licença](#licenca)
 
 ---
+
+<a id="sobre"></a>
 
 ## 🚌 1. Sobre o BUZUFBA
 
 O **BUZUFBA** é o sistema de transporte coletivo e gratuito que atende a comunidade acadêmica da Universidade Federal da Bahia em Salvador-BA. Ele atua como um elemento crucial de permanência estudantil e integração urbana, conectando faculdades, institutos de pesquisa, residências universitárias e pontos estratégicos de transporte da cidade ao longo de 5 rotas circulares operadas durante os dias úteis e sábados.
 
 ---
+
+<a id="rotas"></a>
 
 ## 🗺️ 2. Rotas Operacionais
 
@@ -47,6 +50,8 @@ O sistema é modelado com base nas seguintes linhas circulares principais:
 | **B5** | Federação - Ondina - Canela - Vitória | Conecta o campus da Federação (Engenharia/Arquitetura) a Ondina e Canela. |
 
 ---
+
+<a id="arquitetura"></a>
 
 ## 📂 3. Arquitetura do Repositório
 
@@ -84,6 +89,8 @@ buzufba-gtfs/
 
 ---
 
+<a id="requisitos"></a>
+
 ## 🛠️ 4. Requisitos de Infraestrutura & Software
 
 Devido à integração com o **R5** (uma engine de roteamento de alto desempenho escrita em Java), os requisitos deste repositório vão além das bibliotecas tradicionais de R:
@@ -113,6 +120,8 @@ install.packages(c("tidytransit", "dplyr", "lubridate", "leaflet", "leaftime", "
 
 ---
 
+<a id="como-utilizar"></a>
+
 ## ⚙️ 5. Como Utilizar o Pipeline
 
 O pipeline foi desenhado para ser executado de forma sequencial, onde cada etapa gera insumos para a subsequente.
@@ -133,6 +142,7 @@ O script `src/R/gtfs/gtfs.R` monta de maneira programática todas as tabelas man
 source("src/R/gtfs/gtfs.R")
 ```
 *Insumo Gerado:* `data/gtfs/buzufba_gtfs.zip`
+*Documentação do Script:* O script em R do GTFS foi documentado e pode ser acessado através do [link](https://01a08be6-dcfd-7112-31db-cec7d0804ee0.share.connect.posit.cloud/).
 
 ### Etapa 2: Análise de Acessibilidade Espacial
 Usando o motor `r5r` acoplado ao modelo de elevação digital (`salvador_mde.tif`), ao OpenStreetMap (`ufba.pbf`) e ao nosso GTFS recém-gerado, este script calcula as curvas de tempo de viagem de pedestres saindo de todas as unidades acadêmicas (`edif_ufba.gpkg`) para os pontos do BUZUFBA, levando em conta o relevo acidentado de Salvador.
@@ -148,11 +158,13 @@ O script `src/R/animacao/animacao_buzufba.R` converte o feed estático GTFS em c
 ```r
 source("src/R/animacao/animacao_buzufba.R")
 ```
-*Insumo Gerado:* HTML animado e interativo de alta resolução mostrando os ônibus trafegando ao longo das vias urbanas.
+*Insumo Gerado:* HTML animado e interativo de alta resolução mostrando os ônibus trafegando ao longo das vias urbanas. A página pode ser acessada através do [GitHub Pages](https://gabrielcury30.github.io/buzufba-gtfs/) do projeto.
 
 ---
 
-<!--## 🤝 6. Como Contribuir
+<a id="como-contribuir"></a>
+
+## 🤝 6. Como Contribuir
 
 Ficamos muito felizes com o seu interesse em melhorar o projeto! Para contribuir:
 
@@ -163,10 +175,12 @@ Ficamos muito felizes com o seu interesse em melhorar o projeto! Para contribuir
 
 ---
 
+<a id="licenca"></a>
+
 ## 📝 7. Licença
 
 Este projeto é disponibilizado sob a Licença **MIT**. Sinta-se livre para adaptar, redistribuir e aplicar estes dados e rotinas para pesquisas e planejamentos urbanos adicionais.
 
 ---
--->
+
 *Desenvolvido e mantido com foco em reprodutibilidade científica e mobilidade ativa.*
