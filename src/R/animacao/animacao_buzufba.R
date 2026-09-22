@@ -16,17 +16,21 @@ feed_path    <- "data/gtfs/buzufba_gtfs.zip"
 transit_type <- 3 # Define que o tipo de transporte é ônibus
 
 # Configuração da data e janela de tempo para animação
-dep_date     <- as.Date("2021-03-02")
+dep_date     <- as.Date("2026-09-21")
 min_dep_time <- "06:00:00"
-max_arv_time <- "09:00:00"
+max_arv_time <- "23:30:00"
 
 # Parâmetros de interpolação: passos de tempo e tamanho do rastro (tail)
-step_sec  <- 2
-trail_sec <- 8
+step_sec  <- 5
+trail_sec <- 20
 
 # Cores definidas para cada rota (mapeamento ID -> HEX)
 route_cols <- c(B1="#E41A1C", B2="#377EB8", B3="#4DAF4A", B4="#984EA3", 
                 B5="#FF7F00")
+
+route_colors_js <- paste0(
+  "{", paste0('"', names(route_cols), '":"', unname(route_cols), '"', collapse = ","), "}"
+)
 
 # Leitura do GTFS e filtragem dos IDs de rota e viagem de interesse
 gtfs <- read_gtfs(feed_path)
@@ -158,10 +162,28 @@ pts <- bind_rows(lapply(split(trips_shapes, trips_shapes$trip_id),
                         make_points)) %>%
   filter(start >= t0, start <= t1)
 
-##### 4) Criação do mapa interativo com timeline #####
+#### 4) Criação do mapa interativo com timeline #####
 map <- leaflet() %>%
-  addProviderTiles("Esri.WorldStreetMap") %>% # Mapa base
+  addTiles(
+    urlTemplate = paste0(
+      "https://{s}.basemaps.cartocdn.com/",
+      "light_all/{z}/{x}/{y}.png?key=",
+      "INSIRA_SUA_CHAVE_AQUI"
+    ),
+    attribution = paste0(
+      '&copy; <a href="https://www.openstreetmap.org/copyright">',
+      'OpenStreetMap</a>, ',
+      '&copy; <a href="https://carto.com/attributions">',
+      'CARTO</a>'
+    ),
+    options = tileOptions(
+      subdomains = "abcd",
+      maxZoom = 20
+    )
+  ) %>% # Mapa base
   setView(lng = -38.510, lat = -12.999, zoom = 13)
+
+# map <- leaflet() |> addProviderTiles(providers$CartoDB.Positron) |> setView(lng = -38.510, lat = -12.999, zoom = 13)
 
 # Adiciona geometrias das rotas como camadas opcionais
 for (r_id in names(route_cols)) {
@@ -189,8 +211,8 @@ function(data, latlng) {
   ),
   sliderOpts = sliderOptions(
     position   = "bottomleft",
-    duration   = 90000,
-    step       = 60000,
+    duration   = 525000,
+    step       = 8000,
     showTicks  = FALSE,
     formatOutput = htmlwidgets::JS("
       function(date) {
@@ -215,8 +237,9 @@ map <- map %>%
 
 # Lógica JS customizada para mostrar/esconder rotas via checkbox 
 # (conecta com a classe CSS)
-map <- map %>% htmlwidgets::onRender(htmlwidgets::JS("
+map <- map %>% htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
+  var routeColors = ", route_colors_js, ";
   var styleEl = document.createElement('style');
   styleEl.setAttribute('id', 'routeHideStyle');
   document.head.appendChild(styleEl);
@@ -234,7 +257,31 @@ function(el, x) {
     }
     styleEl.textContent = css;
   };
-
+  
+  // Insere um quadradinho colorido ao lado de cada checkbox, usando routeColors
+  var addSwatches = function() {
+    var inputs = el.querySelectorAll('.leaflet-control-layers-overlays input[type=checkbox]');
+    for (var i = 0; i < inputs.length; i++) {
+      var lbl = inputs[i].parentElement;
+      while (lbl && lbl.tagName !== 'LABEL') lbl = lbl.parentElement;
+      if (!lbl) continue;
+      var name = (lbl.textContent || '').trim();
+      var color = routeColors[name];
+      if (!color) continue;
+      var swatch = document.createElement('span');
+      swatch.style.display = 'inline-block';
+      swatch.style.width = '10px';
+      swatch.style.height = '10px';
+      swatch.style.marginLeft = '4px';
+      swatch.style.marginRight = '4px';
+      swatch.style.borderRadius = '2px';
+      swatch.style.backgroundColor = color;
+      swatch.style.verticalAlign = 'middle';
+      inputs[i].insertAdjacentElement('afterend', swatch);
+    }
+  };
+  addSwatches();
+  
   el.addEventListener('change', function(ev) {
     var t = ev.target;
     if (!t || t.tagName !== 'INPUT' || t.type !== 'checkbox') return;
@@ -243,7 +290,7 @@ function(el, x) {
 
   refresh();
 }
-"))
+")))
 
 # Salva o resultado final como um arquivo HTML
 htmlwidgets::saveWidget(map, "index.html", selfcontained = TRUE)
