@@ -162,7 +162,7 @@ pts <- bind_rows(lapply(split(trips_shapes, trips_shapes$trip_id),
                         make_points)) %>%
   filter(start >= t0, start <= t1)
 
-#### 4) Criação do mapa interativo com timeline #####
+### 4) Criação do mapa interativo com timeline #####
 map <- leaflet() %>%
   addTiles(
     urlTemplate = paste0(
@@ -290,7 +290,56 @@ function(el, x) {
 
   refresh();
 }
-")))
+"))) %>% htmlwidgets::onRender(htmlwidgets::JS("
+function(el, x) {
+  var map = this; // instância do Leaflet Map
+
+  // Cria o painel de controles como um L.control flutuante
+  var opacityControl = L.control({position: 'bottomright'});
+  opacityControl.onAdd = function() {
+    var div = L.DomUtil.create('div', 'opacity-control');
+    div.style.background = 'white';
+    div.style.padding = '8px 10px';
+    div.style.borderRadius = '4px';
+    div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+    div.style.fontSize = '12px';
+    div.innerHTML =
+      '<div style=\"margin-bottom:6px;\">' +
+        '<label>Transparência das Rotas: <input id=\"routeOpacity\" type=\"range\" ' +
+        'min=\"0\" max=\"1\" step=\"0.05\" value=\"0.3\"></label>' +
+      '</div>' +
+      '<div>' +
+        '<label>Transparência do Mapa: <input id=\"baseOpacity\" type=\"range\" ' +
+        'min=\"0\" max=\"1\" step=\"0.05\" value=\"1\"></label>' +
+      '</div>';
+    // Impede que arrastar o slider também arraste/zoom o mapa
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    return div;
+  };
+  opacityControl.addTo(map);
+
+  // Opacidade das linhas de rota
+  document.getElementById('routeOpacity').addEventListener('input', function(e) {
+    var val = parseFloat(e.target.value);
+    map.eachLayer(function(layer) {
+      if (layer instanceof L.Polyline) {
+        layer.setStyle({ opacity: val });
+      }
+    });
+  });
+
+  // Opacidade do mapa base (tiles)
+  document.getElementById('baseOpacity').addEventListener('input', function(e) {
+    var val = parseFloat(e.target.value);
+    map.eachLayer(function(layer) {
+      if (layer instanceof L.TileLayer) {
+        layer.setOpacity(val);
+      }
+    });
+  });
+}
+"))
 
 # Salva o resultado final como um arquivo HTML
 htmlwidgets::saveWidget(map, "index.html", selfcontained = TRUE)
