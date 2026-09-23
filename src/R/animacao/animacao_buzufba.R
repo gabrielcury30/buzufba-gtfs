@@ -183,8 +183,6 @@ map <- leaflet() %>%
   ) %>% # Mapa base
   setView(lng = -38.510, lat = -12.999, zoom = 13)
 
-# map <- leaflet() |> addProviderTiles(providers$CartoDB.Positron) |> setView(lng = -38.510, lat = -12.999, zoom = 13)
-
 # Adiciona geometrias das rotas como camadas opcionais
 for (r_id in names(route_cols)) {
   map <- map %>% addPolylines(
@@ -212,7 +210,7 @@ function(data, latlng) {
   sliderOpts = sliderOptions(
     position   = "bottomleft",
     duration   = 525000,
-    step       = 8000,
+    steps       = 200000,
     showTicks  = FALSE,
     formatOutput = htmlwidgets::JS("
       function(date) {
@@ -222,6 +220,8 @@ function(data, latlng) {
       }")
   )
 )
+
+button_jump_sec <- 50
 
 # Adiciona paradas fixas e controle de camadas
 map <- map %>%
@@ -339,7 +339,37 @@ function(el, x) {
     });
   });
 }
-"))
+")) %>% 
+  htmlwidgets::onRender(htmlwidgets::JS(paste0("
+function(el, x) {
+  var jumpMs = ", button_jump_sec * 1000, ";
+
+  var slider  = el.querySelector('.leaflet-timeline-control input.time-slider');
+  var prevBtn = el.querySelector('.leaflet-timeline-control button.prev');
+  var nextBtn = el.querySelector('.leaflet-timeline-control button.next');
+  if (!slider || !prevBtn || !nextBtn) return;
+
+  // Clonar remove os listeners originais da biblioteca (prev()/next() internos)
+  var newPrev = prevBtn.cloneNode(true);
+  var newNext = nextBtn.cloneNode(true);
+  prevBtn.parentNode.replaceChild(newPrev, prevBtn);
+  nextBtn.parentNode.replaceChild(newNext, nextBtn);
+
+  // Evita que o clique nos botões arraste/zoome o mapa por baixo
+  L.DomEvent.disableClickPropagation(newPrev);
+  L.DomEvent.disableClickPropagation(newNext);
+
+  function jump(delta) {
+    var min = parseFloat(slider.min), max = parseFloat(slider.max);
+    var val = Math.max(min, Math.min(max, parseFloat(slider.value) + delta));
+    slider.value = val;
+    slider.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  newPrev.addEventListener('click', function() { jump(-jumpMs); });
+  newNext.addEventListener('click', function() { jump(jumpMs); });
+}
+")))
 
 # Salva o resultado final como um arquivo HTML
 htmlwidgets::saveWidget(map, "index.html", selfcontained = TRUE)
