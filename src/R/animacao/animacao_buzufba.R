@@ -48,26 +48,61 @@ haversine_m <- function(lat1, lon1, lat2, lon2) {
   2 * R * asin(sqrt(a))
 }
 
+# Adensa o shape: insere pontos intermediários (em linha reta) de modo que haja
+# um vértice a cada ~step_m metros. Não altera o desenho. É necessário porque
+# shapes desenhados à mão têm poucos vértices (ex.: 1 a cada 50-100 m), o que
+# deixaria o "encaixe" das paradas grosseiro.
+densify_shape <- function(df, step_m = 10) {
+  n <- nrow(df)
+  if (n < 2) return(df[, c("shape_pt_lat", "shape_pt_lon")])
+  seg <- haversine_m(df$shape_pt_lat[-n], df$shape_pt_lon[-n],
+                     df$shape_pt_lat[-1], df$shape_pt_lon[-1])
+  k <- pmax(1L, as.integer(ceiling(seg / step_m)))  # subdivisões por segmento
+  i <- rep(seq_len(n - 1), k)                       # segmento de cada ponto novo
+  f <- (sequence(k) - 1) / k[i]                     # fração dentro do segmento
+  tibble::tibble(
+    shape_pt_lat = c(df$shape_pt_lat[i] + f * (df$shape_pt_lat[i + 1] - df$shape_pt_lat[i]),
+                     df$shape_pt_lat[n]),
+    shape_pt_lon = c(df$shape_pt_lon[i] + f * (df$shape_pt_lon[i + 1] - df$shape_pt_lon[i]),
+                     df$shape_pt_lon[n])
+  )
+}
+
 # Calcula a distância total percorrida ao longo de cada 'shape' (traçado)
 shapes_dist <- gtfs$shapes %>%
   arrange(shape_id, shape_pt_sequence) %>%
   group_by(shape_id) %>%
-  mutate(shape_dist_traveled = cumsum(c(0, haversine_m(
-    shape_pt_lat[-n()], shape_pt_lon[-n()],
-    shape_pt_lat[-1],  shape_pt_lon[-1])))) %>%
+  group_modify(~ densify_shape(.x, step_m = 10)) %>%
+  mutate(shape_pt_sequence = row_number(),
+         shape_dist_traveled = cumsum(c(0, haversine_m(
+           shape_pt_lat[-n()], shape_pt_lon[-n()],
+           shape_pt_lat[-1],  shape_pt_lon[-1])))) %>%
   ungroup()
 
 ##### 2) Snap monotônico das paradas no shape #####
 # Função para encontrar a posição (distância) de cada parada no 
 # shape mais próximo
-snap_stops <- function(stop_lat, stop_lon, shp) {
-  last <- 1L; out <- numeric(length(stop_lat))
+# A busca é sempre para frente (a partir da parada anterior) e usa a PRIMEIRA
+# passagem do shape a menos de 'tol_m' metros da parada. Isso evita que, em rotas
+# circulares (início e fim no mesmo local), a primeira parada seja encaixada no
+# FIM do shape e todas as seguintes "colapsem" no mesmo ponto.
+# Se nenhuma passagem estiver dentro da tolerância, usa a mais próxima e avisa.
+snap_stops <- function(stop_lat, stop_lon, shp, tol_m = 30) {
+  n <- nrow(shp); last <- 1L; out <- numeric(length(stop_lat))
   for (i in seq_along(stop_lat)) {
-    # Busca o ponto no shape que minimiza a distância até a parada
     d <- haversine_m(stop_lat[i], stop_lon[i],
-                     shp$shape_pt_lat[last:nrow(shp)],
-                     shp$shape_pt_lon[last:nrow(shp)])
-    j <- last + which.min(d) - 1L
+                     shp$shape_pt_lat[last:n], shp$shape_pt_lon[last:n])
+    perto <- which(d <= tol_m)
+    if (length(perto) > 0) {
+      ini <- perto[1]; fim <- ini
+      while (fim < length(d) && d[fim + 1] <= tol_m) fim <- fim + 1
+      k <- ini - 1L + which.min(d[ini:fim])   # melhor ponto da 1ª passagem
+    } else {
+      k <- which.min(d)
+      warning(sprintf("Parada #%d fica a %.0f m do shape '%s'.", 
+                      i, d[k], shp$shape_id[1]), call. = FALSE)
+    }
+    j <- last + k - 1L
     out[i] <- shp$shape_dist_traveled[j]; last <- j # Atualiza posição
   }
   out
@@ -123,6 +158,13 @@ make_points <- function(tr) {
   # Combina paradas e shape, garantindo distâncias crescentes
   comb <- bind_rows(stops, shp) %>%
     arrange(dist) %>% group_by(dist) %>% filter(row_number() == 1) %>% ungroup()
+  
+  # Precisa de ao menos 2 paradas com tempo conhecido para interpolar
+  if (sum(!is.na(comb$time)) < 2) {
+    warning(sprintf("Viagem '%s' ignorada: paradas encaixadas no mesmo ponto do shape.", 
+                    tr$trip_id[1]), call. = FALSE)
+    return(NULL)
+  }
   
   # Interpolação suave de Stine para evitar sobressaltos na animação
   comb$time_i <- as.numeric(stinepack::na.stinterp(
