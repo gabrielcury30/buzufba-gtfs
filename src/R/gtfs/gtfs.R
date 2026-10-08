@@ -1,142 +1,377 @@
 # PACOTES E OPÇÕES
 # Utiliza pacotes para manipulação de dados GTFS (gtfstools), 
 # processamento de dados (tidyverse, data.table), 
-# roteamento (osrm) e manipulação/visualização espacial (sf, mapview).
+# roteamento (Valhalla) e manipulação/visualização espacial (sf, mapview).
 library(gtfstools)
 library(tidyverse)
 library(data.table)
-library(osrm)
 library(sf)
 library(mapview)
+library(httr2)
+
+# Servidor local do Valhalla (Docker, porta padrão 8002).
+valhalla_server <- "http://localhost:8002"
+valhalla_route_url <- paste0(sub("/+$", "", valhalla_server), "/route")
+valhalla_trace_url <- paste0(sub("/+$", "", valhalla_server), "/trace_route")
+
+# --- MODO DE GERAÇÃO DOS SHAPES ---
+# Se algum dos arquivos abaixo existir, o GTFS usa os shapes desenhados à mão
+# e o Valhalla só calcula os tempos entre paradas (endpoint /trace_route).
+# Se nenhum existir, o Valhalla gera os shapes E os tempos (endpoint /route).
+# Cada arquivo deve ter UMA linha (LINESTRING) por shape_id, com a coluna "shape_id".
+shapes_manuais_candidatos <- c("data/shapes/shapes_manuais.gpkg",
+                               "data/shapes/shapes_manuais.geojson")
+shapes_manuais_path <- shapes_manuais_candidatos[file.exists(shapes_manuais_candidatos)][1]
+usar_shapes_manuais <- !is.na(shapes_manuais_path)
+
+# Para forçar o modo 100% Valhalla mesmo com o arquivo presente, descomente:
+# usar_shapes_manuais <- FALSE
+
+# CRS métrico usado para medir distâncias (SIRGAS 2000 / UTM 24S - Salvador)
+crs_metrico <- 31984
+
+# --- PARÂMETROS DE TEMPO E DE OPERAÇÃO ---
+
+# Margem de tempo (minutos) somada a CADA trecho entre paradas adjacentes.
+# O Valhalla calcula apenas o tempo de deslocamento: não inclui o tempo parado
+# para embarque/desembarque. Esta margem representa essa parada (e a
+# aceleração/frenagem). Valor inicial herdado da época do OSRM (perfil carro);
+# o ideal é calibrá-lo com o tempo real de uma volta completa
+# (ver o diagnóstico 'diagnostico_tempos', mais abaixo).
+margem_parada_min <- 0.5
+
+# Viagens noturnas (a partir de 'limite_noite'):
+#   FALSE -> usam o mesmo shape e a mesma sequência de paradas do diurno
+#            (passam por SAO_LAZARO). Use enquanto o trajeto noturno real
+#            não for confirmado.
+#   TRUE  -> pulam SAO_LAZARO e usam o shape próprio "..._CIRCULAR_N".
+noturno_sem_sao_lazaro <- FALSE
 
 # --- FUNÇÕES AUXILIARES DE PROCESSAMENTO ---
 
-# processar_rota_osrm:
-# Esta função calcula o trajeto real (shape) e os tempos entre paradas 
-# consultando a API OSRM ponto a ponto.
-processar_rota_osrm <- function(shape_id, sequencia_stops, df_stops) {
-  message(sprintf("Consultando API OSRM trecho-a-trecho para: %s ...", 
+# processar_rota_valhalla:
+# Calcula o trajeto real (shape) e os tempos acumulados até cada parada.
+# Envia a rota COMPLETA (todas as paradas, na ordem) em uma única requisição.
+# Assim o roteador enxerga o percurso inteiro e decide a direção correta em
+# cada parada, em vez de tratar cada trecho como uma viagem independente.
+processar_rota_valhalla <- function(shape_id, sequencia_stops, df_stops) {
+  message(sprintf("Consultando Valhalla (rota completa, perfil bus) para: %s ...", 
                   shape_id))
   
   # Ordena as coordenadas conforme a sequência definida para a rota
   coords <- df_stops[match(sequencia_stops, df_stops$stop_id), ]
   
-  shape_pts <- list()
-  tempos_acumulados <- c(0) # Início no tempo ZERO
-  tempo_total <- 0
+  # Monta todas as paradas como locations do Valhalla.
+  # 'break' garante que cada parada gere um leg independente entre
+  # duas paradas adjacentes.
+  locations <- lapply(seq_len(nrow(coords)), function(i) {
+    list(
+      lat = coords$stop_lat[i],
+      lon = coords$stop_lon[i],
+      type = "break"
+    )
+  })
   
-  # Loop calculando cada trecho da viagem entre paradas adjacentes
-  for(i in 1:(nrow(coords) - 1)) {
-    origem <- as.numeric(coords[i, c("stop_lon", "stop_lat")])
-    destino <- as.numeric(coords[i+1, c("stop_lon", "stop_lat")])
+  # O formato de saída 'osrm' é solicitado apenas para manter uma estrutura
+  # de resposta equivalente à que o código já consumia (routes/legs/geometry).
+  # O roteamento, porém, é integralmente realizado pelo Valhalla com costing=bus.
+  payload <- list(
+    locations = locations,
+    costing = "bus",
+    directions_type = "none",
+    format = "osrm",
+    shape_format = "geojson"
+  )
+  
+  # POST com corpo JSON: sem limite de tamanho de URL
+  chamar_valhalla <- function() {
+    resp <- httr2::request(valhalla_route_url) |>
+      httr2::req_body_json(payload, auto_unbox = TRUE) |>
+      httr2::req_error(is_error = \(r) FALSE) |>   # deixa tratarmos o erro abaixo
+      httr2::req_perform()
     
-    # Chamada à API OSRM, com robustez (tryCatch) contra quedas 
-    # temporárias de conexão
-    rota_trecho <- tryCatch({
-      osrm::osrmRoute(src = origem, dst = destino, overview = "full")
-    }, error = function(e) {
-      message("  -> Oscilação na API. Tentando novamente...")
-      Sys.sleep(2)
-      osrm::osrmRoute(src = origem, dst = destino, overview = "full")
-    })
+    status <- httr2::resp_status(resp)
+    corpo  <- httr2::resp_body_string(resp)
     
-    # Calcula duração (minutos) e adiciona pequena margem de tempo
-    duracao_minutos <- rota_trecho$duration + 0.5 
-    tempo_total <- tempo_total + duracao_minutos
-    tempos_acumulados <- c(tempos_acumulados, tempo_total)
-    
-    # Coleta a geometria e remove o 1º ponto 
-    # (para evitar duplicidade no encadeamento dos trechos)
-    pts <- sf::st_coordinates(rota_trecho)
-    if(i > 1) pts <- pts[-1, ] 
-    
-    shape_pts[[i]] <- pts
-    Sys.sleep(0.2) # Pausa estratégica para não sobrecarregar a API
+    if (status >= 400) {
+      stop(sprintf("Valhalla retornou HTTP %s para %s: %s",
+                   status, shape_id, corpo))
+    }
+    jsonlite::fromJSON(corpo)
   }
   
-  # Consolida todos os trechos num único traçado contínuo (shape)
-  matriz_pts <- do.call(rbind, shape_pts)
+  resposta <- tryCatch(
+    chamar_valhalla(),
+    error = function(e) {
+      message("  -> Falha no Valhalla (", conditionMessage(e), "). Tentando novamente...")
+      Sys.sleep(2)
+      chamar_valhalla()
+    }
+  )
+  
+  # Em caso de falha de roteamento, o Valhalla pode não retornar 'routes'.
+  if (is.null(resposta$routes) || length(resposta$routes) == 0) {
+    stop(
+      sprintf(
+        "Valhalla não retornou uma rota para %s. Resposta: %s",
+        shape_id,
+        paste(capture.output(str(resposta)), collapse = " ")
+      )
+    )
+  }
+  
+  # Duração de cada trecho (leg) entre paradas adjacentes: o Valhalla informa
+  # em segundos; converte para minutos (1 casa decimal, como o código anterior)
+  # e adiciona a margem por trecho (margem_parada_min). O acumulado começa no ZERO.
+  duracao_trechos <- round(resposta$routes$legs[[1]]$duration / 60, 1) + margem_parada_min
+  tempos_acumulados <- c(0, cumsum(duracao_trechos))
+  
+  # Traçado contínuo da rota inteira (matriz com colunas lon, lat)
+  matriz_pts <- resposta$routes$geometry$coordinates[[1]]
   
   df_shape <- tibble::tibble(
     shape_id = shape_id,
-    shape_pt_lat = matriz_pts[, "Y"],
-    shape_pt_lon = matriz_pts[, "X"],
-    shape_pt_sequence = 1:nrow(matriz_pts)
+    shape_pt_lat = matriz_pts[, 2],
+    shape_pt_lon = matriz_pts[, 1],
+    shape_pt_sequence = seq_len(nrow(matriz_pts))
   )
   
   # Retorna uma lista contendo:
   # 1. 'shape': O traçado geométrico.
-  # 2. 'tempos': O dicionário de tempos acumulados para cada parada.
-  return(list(shape = df_shape, tempos = tempos_acumulados))
+  # 2. 'tempos': Os tempos acumulados (min) para cada parada, na ordem da rota.
+  list(shape = df_shape, tempos = tempos_acumulados)
+}
+
+# --- FUNÇÕES DO MODO "SHAPES MANUAIS + VALHALLA SÓ PARA TEMPOS" ---
+
+# carregar_shapes_manuais:
+# Lê o arquivo de shapes desenhados à mão e devolve uma lista nomeada
+# (shape_id -> geometria LINESTRING em WGS84). Valida duplicatas e geometrias.
+carregar_shapes_manuais <- function(path) {
+  shp <- sf::st_read(path, quiet = TRUE) |> sf::st_zm()
+  if (!"shape_id" %in% names(shp)) {
+    stop("O arquivo de shapes manuais precisa ter uma coluna 'shape_id'.")
+  }
+  
+  duplicados <- unique(shp$shape_id[duplicated(shp$shape_id)])
+  if (length(duplicados) > 0) {
+    stop("shape_id duplicado no arquivo de shapes manuais: ",
+         paste(duplicados, collapse = ", "),
+         ". Mantenha apenas uma feição por shape_id.")
+  }
+  
+  shp <- sf::st_transform(shp, 4326)
+  
+  geoms <- lapply(seq_len(nrow(shp)), function(i) {
+    g <- sf::st_sfc(sf::st_geometry(shp)[[i]], crs = 4326)
+    # Une partes de uma MULTILINESTRING em uma única linha, se possível
+    if (inherits(g[[1]], "MULTILINESTRING")) g <- sf::st_line_merge(g)
+    if (!inherits(g[[1]], "LINESTRING")) {
+      stop(sprintf("O shape '%s' não é uma linha contínua. Verifique o desenho.",
+                   shp$shape_id[i]))
+    }
+    g
+  })
+  setNames(geoms, shp$shape_id)
+}
+
+# post_valhalla: POST genérico com uma nova tentativa em caso de falha.
+post_valhalla <- function(url, payload) {
+  chamar <- function() {
+    resp <- httr2::request(url) |>
+      httr2::req_body_json(payload, auto_unbox = TRUE) |>
+      httr2::req_error(is_error = \(r) FALSE) |>
+      httr2::req_perform()
+    corpo <- httr2::resp_body_string(resp)
+    if (httr2::resp_status(resp) >= 400) {
+      stop(sprintf("HTTP %s: %s", httr2::resp_status(resp), corpo))
+    }
+    jsonlite::fromJSON(corpo)
+  }
+  tryCatch(chamar(), error = function(e) { Sys.sleep(1); chamar() })
+}
+
+# projetar_paradas:
+# Para cada parada (na ordem da rota), acha o índice do vértice da linha onde ela
+# "encosta". A busca é sempre para frente (>= parada anterior), o que é essencial
+# em rotas circulares que passam duas vezes pelo mesmo lugar. Usa a primeira
+# passagem da linha a menos de 'tol_m' metros da parada; se nenhuma estiver
+# dentro da tolerância, pega a mais próxima e emite um aviso.
+projetar_paradas <- function(xy_linha, xy_stops, nomes, tol_m = 30) {
+  n <- nrow(xy_linha)
+  idx <- integer(nrow(xy_stops))
+  prev <- 1L
+  for (i in seq_len(nrow(xy_stops))) {
+    d <- sqrt((xy_linha[, 1] - xy_stops[i, 1])^2 +
+                (xy_linha[, 2] - xy_stops[i, 2])^2)
+    cand  <- prev:n
+    perto <- cand[d[cand] <= tol_m]
+    if (length(perto) > 0) {
+      ini <- perto[1]; fim <- ini
+      while (fim < n && d[fim + 1] <= tol_m) fim <- fim + 1
+      janela <- ini:fim
+      idx[i] <- janela[which.min(d[janela])]
+    } else {
+      idx[i] <- cand[which.min(d[cand])]
+      warning(sprintf(
+        "Parada '%s' (#%d) fica a %.0f m do shape (tolerância %d m). Confira o desenho.",
+        nomes[i], i, d[idx[i]], tol_m), call. = FALSE)
+    }
+    prev <- idx[i]
+  }
+  idx
+}
+
+# tempo_trecho_seg:
+# Tempo (s) para percorrer um trecho do shape manual. O /trace_route com
+# map_snap cola o traçado na malha viária e calcula o tempo com o perfil bus,
+# sem alterar o caminho desenhado. Se falhar, usa /route entre as duas paradas.
+tempo_trecho_seg <- function(pts_ll, p_ini, p_fim) {
+  if (nrow(pts_ll) < 2) return(0)
+  
+  payload <- list(
+    shape = lapply(seq_len(nrow(pts_ll)), function(k) {
+      list(lat = pts_ll[k, 2], lon = pts_ll[k, 1])
+    }),
+    costing = "bus",
+    shape_match = "map_snap",
+    directions_type = "none"
+    # Se houver muitas falhas: trace_options = list(search_radius = 50, gps_accuracy = 10)
+  )
+  
+  tryCatch(
+    post_valhalla(valhalla_trace_url, payload)$trip$summary$time,
+    error = function(e) {
+      warning("map_snap falhou num trecho; usando /route entre as paradas. ",
+              conditionMessage(e), call. = FALSE)
+      r <- post_valhalla(valhalla_route_url, list(
+        locations = list(list(lat = p_ini[1], lon = p_ini[2]),
+                         list(lat = p_fim[1], lon = p_fim[2])),
+        costing = "bus", directions_type = "none"))
+      r$trip$summary$time
+    }
+  )
+}
+
+# processar_rota_manual:
+# Equivalente a processar_rota_valhalla(), mas o shape vem do arquivo manual e o
+# Valhalla só calcula os tempos. Mesma saída: list(shape, tempos).
+processar_rota_manual <- function(shape_id, sequencia_stops, df_stops,
+                                  shapes_manuais, passo_m = 10, tol_m = 30) {
+  # Shape noturno (_N) sem desenho próprio: reaproveita o diurno
+  id_geom <- shape_id
+  if (!id_geom %in% names(shapes_manuais)) {
+    base <- sub("_N$", "", shape_id)
+    if (base %in% names(shapes_manuais)) {
+      message(sprintf("  Sem shape manual para %s; usando %s.", shape_id, base))
+      id_geom <- base
+    } else {
+      stop(sprintf("Não há shape manual para '%s' no arquivo.", shape_id))
+    }
+  }
+  message(sprintf("Shape manual '%s' + tempos do Valhalla para: %s ...",
+                  id_geom, shape_id))
+  
+  linha_ll <- shapes_manuais[[id_geom]]
+  
+  # Versão métrica e "adensada" (vértice a cada ~passo_m) usada só para
+  # posicionar as paradas sobre a linha
+  linha_m <- sf::st_transform(linha_ll, crs_metrico) |>
+    sf::st_segmentize(units::set_units(passo_m, "m"))
+  xy_m  <- sf::st_coordinates(linha_m)[, 1:2]
+  xy_ll <- sf::st_coordinates(sf::st_transform(linha_m, 4326))[, 1:2]
+  
+  # Paradas na ordem da rota
+  coords  <- df_stops[match(sequencia_stops, df_stops$stop_id), ]
+  stops_m <- sf::st_as_sf(coords, coords = c("stop_lon", "stop_lat"), crs = 4326) |>
+    sf::st_transform(crs_metrico) |>
+    sf::st_coordinates()
+  
+  idx <- projetar_paradas(xy_m, stops_m, sequencia_stops, tol_m)
+  
+  # Tempo (s) de cada trecho entre paradas consecutivas
+  duracao_s <- vapply(seq_len(length(idx) - 1), function(i) {
+    tempo_trecho_seg(
+      xy_ll[idx[i]:idx[i + 1], , drop = FALSE],
+      c(coords$stop_lat[i],     coords$stop_lon[i]),
+      c(coords$stop_lat[i + 1], coords$stop_lon[i + 1]))
+  }, numeric(1))
+  
+  # Mesma regra do modo Valhalla: minutos (1 casa) + margem por trecho
+  duracao_trechos   <- round(duracao_s / 60, 1) + margem_parada_min
+  tempos_acumulados <- c(0, cumsum(duracao_trechos))
+  
+  # Shape do GTFS = exatamente os vértices desenhados à mão
+  m <- sf::st_coordinates(linha_ll)[, 1:2]
+  df_shape <- tibble::tibble(
+    shape_id          = shape_id,
+    shape_pt_lat      = m[, 2],
+    shape_pt_lon      = m[, 1],
+    shape_pt_sequence = seq_len(nrow(m))
+  )
+  
+  list(shape = df_shape, tempos = tempos_acumulados)
 }
 
 # gerar_dados_rota:
 # Cria as tabelas 'trips' e 'stop_times' para uma rota específica,
-# injetando os tempos calculados pelo OSRM.
+# injetando os tempos calculados pelo Valhalla. 
+# Totalmente vetorizada: não há loops nem agrupamentos por viagem.
 gerar_dados_rota <- function(route_id, service_id, direction_id, horarios, 
                              sequencia_stops, shape_id, dicionario_tempos) {
   if (length(horarios) == 0) return(NULL)
   
-  # Recupera os tempos calculados pelo OSRM para o shape desta rota
-  offsets_minutos <- dicionario_tempos[[shape_id]]
+  n_viagens <- length(horarios)
+  n_paradas <- length(sequencia_stops)
   
   # Define metadados da viagem (trips)
   trips <- tibble::tibble(
-    route_id = route_id,
-    service_id = service_id,
-    trip_id = sprintf("%s_%s_CIRCULAR_%s", route_id, service_id, 
-                      stringr::str_remove(horarios, ":")),
+    route_id     = route_id,
+    service_id   = service_id,
+    trip_id      = sprintf("%s_%s_CIRCULAR_%s", route_id, service_id, 
+                           sub(":", "", horarios)),
     direction_id = direction_id,
-    shape_id = shape_id,
-    horario_inicio = horarios
+    shape_id     = shape_id
   )
   
+  # Horário de início de cada viagem, em segundos desde 00:00
+  segundos_iniciais <- as.numeric(substr(horarios, 1, 2)) * 3600 + 
+    as.numeric(substr(horarios, 4, 5)) * 60
+  
+  # Matriz paradas x viagens: soma o deslocamento (offset do Valhalla, em segundos)
+  # de cada parada ao horário de início de cada viagem. 
+  # as.vector() empilha viagem por viagem, na mesma ordem de 'rep()' abaixo.
+  segundos_totais <- as.integer(round(
+    outer(dicionario_tempos[[shape_id]] * 60, segundos_iniciais, "+")
+  ))
+  
+  # Formata para padrão GTFS (HH:MM:SS)
+  horario_gtfs <- sprintf("%02d:%02d:%02d", 
+                          segundos_totais %/% 3600L, 
+                          (segundos_totais %% 3600L) %/% 60L, 
+                          segundos_totais %% 60L)
+  
   # Define horários nas paradas (stop_times)
-  stop_times <- trips %>%
-    dplyr::mutate(
-      stop_id = list(sequencia_stops),
-      offset_min = list(offsets_minutos) # Aplica o tempo do OSRM
-    ) %>%
-    tidyr::unnest(cols = c(stop_id, offset_min)) %>%
-    dplyr::group_by(trip_id) %>%
-    dplyr::mutate(
-      stop_sequence = dplyr::row_number(),
-      
-      # Converte horário de início em segundos
-      segundos_iniciais = (as.numeric(substr(horario_inicio, 1, 2)) * 3600) + 
-        (as.numeric(substr(horario_inicio, 4, 5)) * 60),
-      
-      # Soma o deslocamento (offset) ao horário de início
-      segundos_totais = round(segundos_iniciais + (offset_min * 60)),
-      
-      # Formata para padrão GTFS (HH:MM:SS)
-      arrival_time = sprintf("%02d:%02d:%02d", 
-                             floor(segundos_totais / 3600), 
-                             floor((segundos_totais %% 3600) / 60), 
-                             segundos_totais %% 60),
-      departure_time = arrival_time
-    ) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(trip_id, arrival_time, departure_time, stop_id, stop_sequence)
+  stop_times <- data.table::data.table(
+    trip_id        = rep(trips$trip_id, each = n_paradas),
+    arrival_time   = horario_gtfs,
+    departure_time = horario_gtfs,
+    stop_id        = rep(sequencia_stops, times = n_viagens),
+    stop_sequence  = rep(seq_len(n_paradas), times = n_viagens)
+  )
   
-  trips <- trips %>% dplyr::select(-horario_inicio)
-  
-  return(list(trips = trips, stop_times = stop_times))
+  list(trips = trips, stop_times = stop_times)
 }
 
 # Funções de limpeza e união de rotas circulares
-remover_sao_lazaro <- function(seq) {
-  seq_limpa <- seq[seq != "SAO_LAZARO"]
-  # Remove duplicatas consecutivas que possam surgir após a remoção
-  seq_limpa <- seq_limpa[c(TRUE, 
-                           seq_limpa[-1] != seq_limpa[-length(seq_limpa)])]
-  return(seq_limpa)
+remover_sao_lazaro <- function(sequencia) {
+  # Remove a parada e as duplicatas consecutivas que possam surgir após isso
+  rle(sequencia[sequencia != "SAO_LAZARO"])$values
 }
 
 unir_circular <- function(ida, volta) {
   # Evita duplicar o ponto de encontro entre ida e volta
-  if (tail(ida, 1) == volta[1]) return(c(ida, volta[-1]))
-  return(c(ida, volta))
+  c(ida, if (tail(ida, 1) == volta[1]) volta[-1] else volta)
 }
 
 
@@ -170,27 +405,35 @@ routes <- tibble(
 # Cadastro geográfico das paradas (stops)
 stops <- tribble(
   ~stop_id,          ~stop_name,                                              ~stop_lat, ~stop_lon,
-  "SAO_LAZARO",      "Pt. Estacionamento São Lázaro",                         -13.005291, -38.512779,
-  "POLITECNICA",     "Pt. Politécnica",                                       -12.998888, -38.511684,
-  "ARQUITETURA",     "Pt. Arquitetura",                                       -12.997030, -38.508690,
-  "RESIDENCIA5",     "Pt. Residência 5",                                      -12.999222, -38.505920,
-  "CANELA_ICS",      "Campus Vale do Canela (Entrada ICS)",                   -12.994840, -38.520591,
-  "ISC_CANELA",      "ISC Canela",                                            -12.994706, -38.522008,
-  "ODONTO",          "P. Odontologia",                                        -12.994901, -38.523042,
-  "REITORIA",        "P. Reitoria",                                           -12.992472, -38.520556,
-  "CRECHE",          "P. Creche Canela",                                      -12.995331, -38.516956,
-  "GRACA_R2",        "P. Graça R2 (Delicia)",                                 -12.997273, -38.518969,
-  "DIREITO",         "Faculdade de Direito",                                  -12.996346, -38.521625,
-  "PAF1_MAT",        "Pt. Estacionamento (PAF.1 Matemática)",                 -13.001777, -38.506958,
-  "AV_7",            "Avenida 7 de Setembro",                                 -12.983365, -38.514902,
-  "BELAS_ARTES",     "Belas Artes",                                           -12.991234, -38.521154,
-  "RESIDENCIA1",     "Residência I - Vitória",                                -12.994019, -38.526399,
-  "GEOCIENCIAS",     "Pt. Instituto de Geociências",                          -12.998504, -38.506508,
-  "FACOM",           "Pt. Facom",                                             -13.001525, -38.509837,
-  "PORTARIA",        "Pt. Portaria Principal",                                -13.006014, -38.509497,
-  "FACED",           "Faculdade de Educação",                                 -12.995155, -38.519295,
-  "PROAE",           "Pró-Reitoria (PROAE)",                                  -12.997430, -38.509207,
-  "CENTRO_ESPORTES", "Centro Esportes da UFBA",                               -13.009451, -38.513807
+  "SAO_LAZARO",      "Pt. Estacionamento São Lázaro",                         -13.004774, -38.512385,
+  "POLITECNICA",     "Pt. Politécnica",                                       -12.998718, -38.511790,
+  "ARQUITETURA",     "Pt. Arquitetura",                                       -12.997140, -38.508629,
+  "RESIDENCIA5",     "Pt. Residência 5",                                      -12.998336, -38.505939,
+  "CANELA_ICS",      "Campus Vale do Canela (Entrada ICS)",                   -12.994839, -38.520590,
+  "ISC_CANELA",      "ISC Canela",                                            -12.994563, -38.521921,
+  "ODONTO",          "P. Odontologia",                                        -12.994676, -38.522890,
+  "REITORIA",        "P. Reitoria",                                           -12.992404, -38.520654,
+  "CRECHE",          "P. Creche Canela",                                      -12.994758, -38.517496,
+  "GRACA_R2",        "P. Graça R2 (Delicia)",                                 -12.997615, -38.519141,
+  "DIREITO",         "Faculdade de Direito",                                  -12.996353, -38.521559,
+  "DIREITO_B5",      "Faculdade de Direito B5",                               -12.996190, -38.521341,
+  "PAF1_MAT",        "Pt. Estacionamento (PAF.1 Matemática)",                 -13.001760, -38.506922,
+  "PAF1_B1",         "PAF.1 Matemática B1",                                   -13.002414, -38.506589,
+  "AV_7",            "Avenida 7 de Setembro / Faculdade de Economia",         -12.983266, -38.515419,
+  "ECONOMIA",        "Faculdade de Economia Pt. 2",                           -12.983818, -38.515236,
+  "BELAS_ARTES",     "Belas Artes",                                           -12.991215, -38.521153,
+  "RESIDENCIA1",     "Residência I - Vitória",                                -12.994041, -38.526425,
+  "GEOCIENCIAS",     "Pt. Instituto de Geociências",                          -12.998508, -38.506513,
+  "FACOM",           "Pt. Facom",                                             -13.001510, -38.509824,
+  "PORTARIA",        "Pt. Portaria Principal",                                -13.006104, -38.510314,
+  "FACED",           "Faculdade de Educação",                                 -12.995148, -38.519300,
+  "PROAE",           "Pró-Reitoria (PROAE)",                                  -12.997538, -38.509394,
+  "CENTRO_ESPORTES", "Centro Esportes da UFBA",                               -13.009416, -38.513782,
+  "POLITECNICA_VOLTA", "Pt. Politécnica Volta",                               -12.999561, -38.511507,
+  "GARIBALDI",        "Pt. Av. Garibaildi",                                   -12.999217, -38.505917,
+  "REITORIA_2",       "Pt. Reitoria Ida Economia",                            -12.992131, -38.520303,
+  "GEOCIENCIAS_INTERNO", "Pt. Geociência Interno",                            -12.998233, -38.507374,
+  "RESIDENCIA1_IDA",  "Pt. Residência I - Vitória Ida",                       -12.994062, -38.526339
 )
 
 # Define o calendário de operação
@@ -207,35 +450,37 @@ calendar <- tibble(
 # Define as sequências de paradas de cada rota circular
 seqs <- list(
   B1 = unir_circular(
-    c("SAO_LAZARO", "POLITECNICA", "ARQUITETURA", "RESIDENCIA5", "CANELA_ICS", 
+    c("SAO_LAZARO", "POLITECNICA_VOLTA", "ARQUITETURA", "RESIDENCIA5", "CANELA_ICS", 
       "ISC_CANELA", "ODONTO"),
-    c("REITORIA", "CRECHE", "GRACA_R2", "DIREITO", "FACED", "PAF1_MAT", "PROAE", 
-      "POLITECNICA", "SAO_LAZARO")
+    c("REITORIA", "CRECHE", "GRACA_R2", "DIREITO", "FACED", "PAF1_B1", "PROAE", 
+      "POLITECNICA_VOLTA", "SAO_LAZARO")
   ),
   B2 = unir_circular(
-    c("PAF1_MAT", "RESIDENCIA5", "PROAE", "POLITECNICA", "SAO_LAZARO", 
-      "POLITECNICA", "CRECHE", "REITORIA", "BELAS_ARTES", "REITORIA", "CRECHE",
+    c("PAF1_MAT", "GARIBALDI", "PROAE", "POLITECNICA_VOLTA", "SAO_LAZARO", 
+      "POLITECNICA", "CRECHE", "REITORIA_2", "BELAS_ARTES", "REITORIA", "CRECHE",
       "GRACA_R2", "RESIDENCIA1"),
-    c("RESIDENCIA1", "DIREITO", "ISC_CANELA", "ODONTO", "REITORIA", "CRECHE", 
-      "POLITECNICA", "SAO_LAZARO", "POLITECNICA", "ARQUITETURA", "RESIDENCIA5",
+    c("RESIDENCIA1_IDA", "DIREITO", "ISC_CANELA", "ODONTO", "REITORIA", "CRECHE", 
+      "POLITECNICA", "SAO_LAZARO", "POLITECNICA_VOLTA", "ARQUITETURA", "RESIDENCIA5",
       "GEOCIENCIAS", "PAF1_MAT")
   ),
   B3 = unir_circular(
-    c("PAF1_MAT", "RESIDENCIA5", "CANELA_ICS", "AV_7", "BELAS_ARTES"),
+    c("PAF1_MAT", "GARIBALDI", "CANELA_ICS", "AV_7", "BELAS_ARTES"),
     c("REITORIA", "CRECHE", "POLITECNICA", "ARQUITETURA", "GEOCIENCIAS",
       "PAF1_MAT")
   ),
   B4 = unir_circular(
-    c("PAF1_MAT", "RESIDENCIA5", "PROAE", "POLITECNICA", "CRECHE", "REITORIA", 
-      "AV_7"),
-    c("AV_7", "RESIDENCIA1", "GRACA_R2", "POLITECNICA", "SAO_LAZARO", 
+    c("PAF1_MAT", "GARIBALDI", "PROAE", "POLITECNICA", "CRECHE", "REITORIA_2", 
+      "ECONOMIA"),
+    c("RESIDENCIA1", "GRACA_R2", "POLITECNICA_VOLTA", "SAO_LAZARO", 
       "ARQUITETURA", "GEOCIENCIAS", "PAF1_MAT")
   ),
   B5 = unir_circular(
-    c("GEOCIENCIAS", "FACOM", "PORTARIA", "CENTRO_ESPORTES", "RESIDENCIA5", 
-      "PROAE", "SAO_LAZARO", "POLITECNICA", "CRECHE", "REITORIA"),
-    c("RESIDENCIA1", "DIREITO", "CANELA_ICS", "ODONTO", "REITORIA", "CRECHE", 
-      "POLITECNICA", "SAO_LAZARO", "ARQUITETURA", "FACOM", "GEOCIENCIAS")
+    c("GEOCIENCIAS_INTERNO", "FACOM", "PORTARIA", "CENTRO_ESPORTES", "PAF1_B1", 
+      "GARIBALDI", "PROAE", "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA",
+      "POLITECNICA", "CRECHE", "REITORIA_2"),
+    c("RESIDENCIA1", "DIREITO_B5", "ISC_CANELA", "ODONTO", "REITORIA", "CRECHE", 
+      "POLITECNICA", "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA", 
+      "ARQUITETURA", "GEOCIENCIAS", "PAF1_B1", "PORTARIA", "FACOM", "GEOCIENCIAS_INTERNO")
   )
 )
 
@@ -269,42 +514,98 @@ config_rotas <- map_dfr(names(h_base), function(rota) {
   horarios_noite <- h$full[h$full >= h$limite_noite]
   horarios_sab <- h$full[1:which(h$full == h$limite_sab)]
   
+  # Noturno: igual ao diurno ou sem SAO_LAZARO, conforme 'noturno_sem_sao_lazaro'
+  s_noite  <- if (noturno_sem_sao_lazaro) remover_sao_lazaro(s_circular) else s_circular
+  id_dia   <- paste0("SHP_", rota, "_CIRCULAR")
+  id_noite <- if (noturno_sem_sao_lazaro) paste0(id_dia, "_N") else id_dia
+  
   tribble(
     ~route_id, ~service_id, ~direction_id, ~horarios,      ~sequencia_stops,                ~shape_id,
-    rota,      "DIAS_UTEIS", 0,             horarios_dia,   s_circular,                      paste0("SHP_", rota, "_CIRCULAR"),
-    rota,      "DIAS_UTEIS", 0,             horarios_noite, remover_sao_lazaro(s_circular),  paste0("SHP_", rota, "_CIRCULAR_N"),
-    rota,      "SABADO",     0,             horarios_sab,   s_circular,                      paste0("SHP_", rota, "_CIRCULAR")
+    rota,      "DIAS_UTEIS", 0,             horarios_dia,   s_circular,  id_dia,
+    rota,      "DIAS_UTEIS", 0,             horarios_noite, s_noite,     id_noite,
+    rota,      "SABADO",     0,             horarios_sab,   s_circular,  id_dia
   )
 })
 
 # --- GERAÇÃO AUTOMATIZADA DOS DADOS GTFS ---
 
-# 1. Gera Traçados Geométricos (shapes) únicos via OSRM
+# 1. Gera os shapes únicos e os tempos entre paradas.
+#    Modo A (arquivo de shapes manuais presente): shape desenhado à mão,
+#            Valhalla (/trace_route, perfil bus) só calcula os tempos.
+#    Modo B (sem arquivo): Valhalla (/route, perfil bus) gera shape e tempos.
 shapes_unicos <- config_rotas %>% dplyr::distinct(shape_id, sequencia_stops)
 
-message("\nIniciando extração do OSRM (Pode levar alguns minutos)...")
-resultados_osrm <- purrr::map2(
-  shapes_unicos$shape_id, 
-  shapes_unicos$sequencia_stops, 
-  ~processar_rota_osrm(.x, .y, stops)
-)
+if (usar_shapes_manuais) {
+  message(sprintf("\nModo A: shapes manuais (%s) + tempos do Valhalla.", 
+                  shapes_manuais_path))
+  shapes_manuais <- carregar_shapes_manuais(shapes_manuais_path)
+  
+  # Confere se todos os shape_id necessários existem (aceita o diurno como
+  # substituto do noturno "_N") antes de iniciar as consultas ao Valhalla
+  faltando <- shapes_unicos$shape_id[
+    !(shapes_unicos$shape_id %in% names(shapes_manuais) | 
+        sub("_N$", "", shapes_unicos$shape_id) %in% names(shapes_manuais))]
+  if (length(faltando) > 0) {
+    stop("Faltam shapes no arquivo manual: ", paste(faltando, collapse = ", "))
+  }
+  
+  resultados_valhalla <- purrr::map2(shapes_unicos$shape_id, 
+                                     shapes_unicos$sequencia_stops, 
+                                     processar_rota_manual, 
+                                     df_stops = stops, 
+                                     shapes_manuais = shapes_manuais)
+} else {
+  message("\nModo B: arquivo de shapes manuais não encontrado. ",
+          "Valhalla gera shapes e tempos (perfil bus).")
+  resultados_valhalla <- purrr::map2(shapes_unicos$shape_id, 
+                                     shapes_unicos$sequencia_stops, 
+                                     processar_rota_valhalla, df_stops = stops)
+}
 
 # Separa as tabelas de shape
-shapes_final <- purrr::map_dfr(resultados_osrm, "shape")
+shapes_final <- purrr::map_dfr(resultados_valhalla, "shape")
 
 # Cria o Dicionário de Tempos (associa shape_id aos tempos entre paradas)
-dicionario_tempos <- setNames(purrr::map(resultados_osrm, "tempos"), 
+dicionario_tempos <- setNames(purrr::map(resultados_valhalla, "tempos"), 
                               shapes_unicos$shape_id)
 
-# 2. Gera as tabelas 'trips' e 'stop_times' para todas as rotas configuradas
-jobs <- purrr::pmap(config_rotas, function(route_id, service_id, direction_id, 
-                                           horarios, sequencia_stops, shape_id) {
-  gerar_dados_rota(route_id, service_id, direction_id, horarios, 
-                   sequencia_stops, shape_id, dicionario_tempos)
-}) %>% purrr::compact()
+# Diagnóstico: duração de uma volta completa x intervalo entre saídas.
+#   total_min       = tempo de uma volta, com a margem
+#   so_valhalla_min = tempo de uma volta, sem a margem (deslocamento puro)
+#   folga_min       = intervalo entre saídas - volta (negativo = uma saída
+#                     começaria antes de a anterior terminar)
+# Compare 'total_min' com o tempo real medido de uma volta para calibrar
+# 'margem_parada_min':
+#   margem ideal ~ (tempo_real - so_valhalla_min) / n_trechos
+intervalo_entre_saidas <- function(h) {
+  m <- as.numeric(substr(h, 1, 2)) * 60 + as.numeric(substr(h, 4, 5))
+  if (length(m) > 1) min(diff(m)) else NA_real_
+}
 
-trips_final <- purrr::map_dfr(jobs, "trips")
-stop_times_final <- purrr::map_dfr(jobs, "stop_times")
+diagnostico_tempos <- config_rotas %>%
+  dplyr::mutate(
+    intervalo_min   = vapply(horarios, intervalo_entre_saidas, numeric(1)),
+    n_trechos       = lengths(sequencia_stops) - 1L,
+    total_min       = vapply(shape_id, function(id) max(dicionario_tempos[[id]]), 
+                             numeric(1)),
+    so_valhalla_min = total_min - n_trechos * margem_parada_min
+  ) %>%
+  dplyr::group_by(route_id, shape_id, n_trechos, total_min, so_valhalla_min) %>%
+  dplyr::summarise(intervalo_min = suppressWarnings(min(intervalo_min, na.rm = TRUE)),
+                   .groups = "drop") %>%
+  dplyr::mutate(folga_min = intervalo_min - total_min)
+
+message("\nDiagnóstico de tempos (margem = ", margem_parada_min, " min/trecho):")
+print(as.data.frame(diagnostico_tempos), digits = 4)
+
+# 2. Gera as tabelas 'trips' e 'stop_times' para todas as rotas configuradas
+#    (pmap casa as colunas de 'config_rotas' com os argumentos de mesmo nome)
+jobs <- purrr::pmap(config_rotas, gerar_dados_rota, 
+                    dicionario_tempos = dicionario_tempos) %>% 
+  purrr::compact()
+
+trips_final      <- rbindlist(purrr::map(jobs, "trips"))
+stop_times_final <- rbindlist(purrr::map(jobs, "stop_times"))
 
 # 3. Monta as informações de Feed (metadados do arquivo GTFS)
 feed_info <- tibble::tibble(
@@ -319,95 +620,28 @@ feed_info <- tibble::tibble(
 # --- MONTAGEM E VALIDAÇÃO DO OBJETO GTFS ---
 
 # Estrutura o GTFS final como um objeto de classe 'dt_gtfs' e 'gtfs'
-gtfs <- list(
-  agency     = as.data.table(agency),
-  routes     = as.data.table(routes),
-  trips      = as.data.table(trips_final),
-  stop_times = as.data.table(stop_times_final),
-  stops      = as.data.table(stops),
-  calendar   = as.data.table(calendar),
-  shapes     = as.data.table(shapes_final),
-  feed_info  = as.data.table(feed_info)
+gtfs <- lapply(
+  list(agency     = agency,
+       routes     = routes,
+       trips      = trips_final,
+       stop_times = stop_times_final,
+       stops      = stops,
+       calendar   = calendar,
+       shapes     = shapes_final,
+       feed_info  = feed_info),
+  as.data.table
 )
 
-class(gtfs) <- c("dt_gtfs", "gtfs")
+class(gtfs) <- c("tidygtfs", "dt_gtfs", "gtfs")
 
 # Formata datas para o padrão esperado pelo gtfstools
-gtfs$calendar[, start_date := as.Date(as.character(start_date), 
-                                      format = "%Y%m%d")]
-gtfs$calendar[, end_date   := as.Date(as.character(end_date), 
-                                      format = "%Y%m%d")]
-gtfs$feed_info[, feed_start_date := as.Date(as.character(feed_start_date), 
-                                            format = "%Y%m%d")]
-gtfs$feed_info[, feed_end_date := as.Date(as.character(feed_end_date), 
-                                          format = "%Y%m%d")]
-
-# Validação: verifica se todas as paradas em 'stop_times' estão 
-# cadastradas em 'stops'
-invalid_stops <- setdiff(gtfs$stop_times$stop_id, gtfs$stops$stop_id)
-if(length(invalid_stops) > 0) {
-  warning("ERRO CRÍTICO: Stop_ids usados mas não definidos em 'stops': ", 
-          paste(invalid_stops, collapse=", "))
-} else {
-  message("Validação de integridade: OK. Todas as paradas cadastradas.")
-}
-
-message(sprintf("Total de viagens circulares: %d\nTotal de paradas programadas: %d", 
-                nrow(gtfs$trips), nrow(gtfs$stop_times)))
-
-# --- EXPORTAÇÃO E VISUALIZAÇÃO INTERATIVA ---
-
-## Valida o GTFS do BuzUFBA através de ferramenta externa
-validator_path <- download_validator(tempdir())
-gtfstools::validate_gtfs(gtfs, "validation_result", validator_path)
+gtfs$calendar[, c("start_date", "end_date") := 
+                lapply(.SD, as.Date, format = "%Y%m%d"), 
+              .SDcols = c("start_date", "end_date")]
+gtfs$feed_info[, c("feed_start_date", "feed_end_date") := 
+                 lapply(.SD, as.Date, format = "%Y%m%d"), 
+               .SDcols = c("feed_start_date", "feed_end_date")]
 
 # Exporta o arquivo final para uso no r5r
 write_gtfs(gtfs, "data/gtfs/buzufba_gtfs.zip")
 message("GTFS salvo em 'data/gtfs/buzufba_gtfs.zip'.")
-
-# Função para investigar visualmente uma rota e seus shapes
-investigar_rota <- function(gtfs_data) {
-  if(is.null(gtfs_data$shapes) || nrow(gtfs_data$shapes) == 0) return(
-    message("A tabela 'shapes' está vazia."))
-  
-  shapes_disp <- unique(gtfs_data$shapes$shape_id)
-  print(data.frame(Indice = seq_along(shapes_disp), ID = shapes_disp))
-  
-  n <- as.numeric(readline(prompt = "\nDigite o NÚMERO do shape para visualizar 
-                           (ou 0 para sair): "))
-  if (is.na(n) || n == 0 || n > length(shapes_disp)) return(message(
-    "Cancelado."))
-  
-  shp <- shapes_disp[n]
-  mini_gtfs <- list(shapes = gtfs_data$shapes[shape_id == shp])
-  class(mini_gtfs) <- c("dt_gtfs", "gtfs")
-  
-  # Converte shapes para objeto SF para visualização no mapa
-  linha_sf <- tryCatch(convert_shapes_to_sf(mini_gtfs), 
-                       error = function(e) NULL)
-  if (is.null(linha_sf)) return(message("Erro ao converter Shape."))
-  
-  trip_exemplo <- gtfs_data$trips[shape_id == shp]$trip_id[1]
-  
-  # Cria visualização interativa do mapa
-  m1 <- mapview(linha_sf, color = "#00539F", lwd = 5, 
-                layer.name = "Trajeto Circular")
-  
-  if(!is.na(trip_exemplo)) {
-    stops_da_rota <- gtfs_data$stop_times[trip_id == trip_exemplo] %>% 
-      left_join(gtfs_data$stops, by = "stop_id") %>%
-      st_as_sf(coords = c("stop_lon", "stop_lat"), crs = 4326)
-    
-    m2 <- mapview(stops_da_rota, col.regions = "black", color = "white", 
-                  cex = 6, 
-                  label = paste(stops_da_rota$stop_sequence, "-", 
-                                stops_da_rota$stop_name), 
-                  layer.name = "Paradas")
-    print(m1 + m2)
-  } else {
-    print(m1)
-  }
-}
-
-# Chama a ferramenta de investigação
-investigar_rota(gtfs)
