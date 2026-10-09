@@ -35,3 +35,10 @@ _publish.yml
 
 # rsconnect
 rsconnect/
+
+# r5r
+data/r5r/
+
+# RJavaEnv
+.Rprofile
+rjavaenv/

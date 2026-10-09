@@ -1,6 +1,3 @@
-# Configuração de memória para o motor Java (necessário para r5r)
-options(java.parameters = "-Xmx4G")
-
 # Carregamento de bibliotecas para análise espacial, 
 # manipulação de dados e visualização
 library(r5r)
@@ -9,20 +6,22 @@ library(dplyr)
 library(ggplot2)
 library(ggspatial)
 library(viridis)
-library(r5rgui)
 library(tidyr)
 library(scales)
 library(forcats)
+
+# Configuração de memória para o motor Java (necessário para r5r)
+options(java.parameters = "-Xmx4G")
 
 # Construção da rede de transporte a partir dos dados locais
 r5r_network <- build_network("data/r5r")
 
 # Leitura do arquivo geopackage com as unidades da UFBA
-edif <- st_read("data/edificacoes/edif_ufba.gpkg")
+edif <- st_read("data/edificacoes/edificacoes.gpkg")
 
 # Criação de um objeto 'sf' apenas com os campos de interesse
 edif_sf <- st_sf(
-  osm_id = edif$osm_id,
+  id = edif$id,
   name = edif$name,
   geom = edif$geom
 )
@@ -228,7 +227,7 @@ plot_acumulativo <- acessibilidade_acumulativa_completo %>%
   )
 
 # Salvando o gráfico de acessibilidade
-ggsave("data/img/acessibilidade_acumulativa.png"plot_acumulativo,
+ggsave("data/img/acessibilidade_acumulativa.png", plot_acumulativo,
        width = 12, height = 10, dpi = 150)
 
 # --- ANÁLISE — PENALIDADE DE ESPERA ---
