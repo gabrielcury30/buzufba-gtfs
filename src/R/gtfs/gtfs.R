@@ -469,9 +469,9 @@ seqs <- list(
       "PAF1_MAT")
   ),
   B4 = unir_circular(
-    c("PAF1_MAT", "GARIBALDI", "PROAE", "POLITECNICA", "CRECHE", "REITORIA_2", 
+    c("PAF1_MAT", "GARIBALDI", "PROAE", "POLITECNICA", "CRECHE", "REITORIA_2",
       "ECONOMIA"),
-    c("RESIDENCIA1", "GRACA_R2", "POLITECNICA_VOLTA", "SAO_LAZARO", 
+    c("RESIDENCIA1", "GRACA_R2", "POLITECNICA_VOLTA", "SAO_LAZARO",
       "ARQUITETURA", "GEOCIENCIAS", "PAF1_MAT")
   ),
   B5 = unir_circular(
