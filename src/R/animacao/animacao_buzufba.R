@@ -13,7 +13,7 @@ library(sf)
 
 # Caminhos dos dados e parâmetros básicos de simulação
 feed_path      <- "data/gtfs/buzufba_gtfs.zip"
-buildings_path <- "data/edificacoes/edificacoes.gpkg"
+buildings_path <- "data/edificacoes/edificacoes.gpkg" # Deixe o GPKG no diretório de trabalho do R
 transit_type   <- 3 # Define que o tipo de transporte é ônibus
 
 # Carrega as edificações da UFBA. O arquivo fornecido está em EPSG:4326
@@ -293,13 +293,18 @@ map <- map %>% addTimeline(
   timelineOpts = timelineOptions(
     pointToLayer = htmlwidgets::JS("
 function(data, latlng) {
-  return L.circleMarker(latlng, {
-    radius: 6, weight: 1,
+  // Guarda o instante de cada posição para calcular dinamicamente a idade
+  // do ponto e reduzir seu tamanho conforme ele fica para trás no rastro.
+  var marker = L.circleMarker(latlng, {
+    radius: 7, weight: 1,
     color: data.properties.color,
     fillColor: data.properties.color,
-    fillOpacity: 0.7,
+    fillOpacity: 0.75,
     className: 'rt-' + data.properties.route_id
   });
+  marker._busTrailPoint = true;
+  marker._busTrailStart = new Date(data.properties.start).getTime();
+  return marker;
 }")
   ),
   sliderOpts = sliderOptions(
@@ -390,7 +395,7 @@ function(el, x) {
 
   refresh();
 }
-"))) %>% htmlwidgets::onRender(htmlwidgets::JS("
+"))) %>% htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
   var map = this; // instância do Leaflet Map
 
@@ -440,8 +445,70 @@ function(el, x) {
       }
     });
   });
+
+  // Rastro de um ônibus: o ponto mais recente fica maior; os anteriores
+  // diminuem progressivamente de acordo com sua idade no instante atual.
+  var trailDurationMs = ", trail_sec * 1000, ";
+  var leaderWindowMs = ", step_sec * 1000, ";
+  var timelineSlider = el.querySelector('.leaflet-timeline-control input.time-slider');
+
+  function updateTrailLayer(layer, currentTime) {
+    if (!layer) return;
+
+    if (layer._busTrailPoint && typeof layer.setRadius === 'function') {
+      var ageMs = currentTime - layer._busTrailStart;
+      var tailFraction = 0;
+      var radius;
+
+      // Por um intervalo de step_sec, o ponto líder mantém o tamanho máximo.
+      // Depois disso, os pontos do rastro encolhem gradualmente até 2 px.
+      if (ageMs >= 0 && ageMs < leaderWindowMs) {
+        radius = 7;
+      } else {
+        tailFraction = Math.max(0, Math.min(1,
+          (ageMs - leaderWindowMs) / Math.max(1, trailDurationMs - leaderWindowMs)
+        ));
+        radius = 5.5 - (3.5 * tailFraction);  // de 5,5 px até 2 px
+      }
+
+      var fillOpacity = 0.75 - (0.45 * tailFraction);
+      var strokeOpacity = 0.90 - (0.40 * tailFraction);
+
+      layer.setRadius(radius);
+      layer.setStyle({
+        fillOpacity: fillOpacity,
+        opacity: strokeOpacity,
+        weight: 0.6 + (0.4 * (1 - tailFraction))
+      });
+    }
+
+    // Os marcadores do leaftime ficam dentro de grupos de camadas.
+    if (typeof layer.eachLayer === 'function') {
+      layer.eachLayer(function(child) {
+        updateTrailLayer(child, currentTime);
+      });
+    }
+  }
+
+  function updateBusTrail() {
+    if (!timelineSlider) return;
+    var currentTime = parseFloat(timelineSlider.value);
+    if (!isFinite(currentTime)) return;
+
+    map.eachLayer(function(layer) {
+      updateTrailLayer(layer, currentTime);
+    });
+  }
+
+  if (timelineSlider) {
+    timelineSlider.addEventListener('input', updateBusTrail);
+    timelineSlider.addEventListener('change', updateBusTrail);
+  }
+  // Atualiza também durante a reprodução automática, mesmo sem interação manual.
+  window.setInterval(updateBusTrail, 100);
+  updateBusTrail();
 }
-")) %>% 
+"))) %>% 
   htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
   var jumpMs = ", button_jump_sec * 1000, ";
