@@ -11,9 +11,38 @@ library(htmlwidgets)
 library(stinepack)
 library(sf)
 
-# Caminho do feed e parâmetros básicos de simulação
-feed_path    <- "data/gtfs/buzufba_gtfs.zip"
-transit_type <- 3 # Define que o tipo de transporte é ônibus
+# Caminhos dos dados e parâmetros básicos de simulação
+feed_path      <- "data/gtfs/buzufba_gtfs.zip"
+buildings_path <- "data/edificacoes/edificacoes.gpkg"
+transit_type   <- 3 # Define que o tipo de transporte é ônibus
+
+# Carrega as edificações da UFBA. O arquivo fornecido está em EPSG:4326
+# e contém o campo 'name', usado no tooltip ao passar o mouse.
+if (!file.exists(buildings_path)) {
+  stop(sprintf(
+    "Arquivo de edificações não encontrado: '%s'. Ajuste buildings_path.",
+    buildings_path
+  ))
+}
+
+edificacoes_sf <- sf::st_read(buildings_path, quiet = TRUE)
+if (!"name" %in% names(edificacoes_sf)) {
+  stop("O arquivo de edificações precisa conter uma coluna chamada 'name'.")
+}
+
+edificacoes_sf <- edificacoes_sf %>%
+  mutate(name = ifelse(
+    is.na(name) | trimws(as.character(name)) == "",
+    "Edificação sem nome",
+    as.character(name)
+  )) %>%
+  st_transform(crs = 4326)
+
+# Estilo da camada de edificações (distinto das cores das rotas)
+building_fill   <- "#E9C46A"
+building_border <- "#725C2D"
+building_group  <- "Edificações UFBA"
+
 
 # Configuração da data e janela de tempo para animação
 dep_date     <- as.Date("2026-09-21")
@@ -30,6 +59,12 @@ route_cols <- c(B1="#E41A1C", B2="#377EB8", B3="#4DAF4A", B4="#984EA3",
 
 route_colors_js <- paste0(
   "{", paste0('"', names(route_cols), '":"', unname(route_cols), '"', collapse = ","), "}"
+)
+
+# Mapeamento de cores usado apenas nos quadradinhos do controle de camadas
+layer_cols <- c(route_cols, setNames(building_fill, building_group))
+layer_colors_js <- paste0(
+  "{", paste0('"', names(layer_cols), '":"', unname(layer_cols), '"', collapse = ","), "}"
 )
 
 # Leitura do GTFS e filtragem dos IDs de rota e viagem de interesse
@@ -225,6 +260,24 @@ map <- leaflet() %>%
   ) %>% # Mapa base
   setView(lng = -38.510, lat = -12.999, zoom = 13)
 
+# Camada opcional das edificações. É adicionada antes das rotas para que
+# os traçados dos ônibus permaneçam visíveis por cima dos polígonos.
+map <- map %>% addPolygons(
+  data = edificacoes_sf,
+  fillColor = building_fill,
+  color = building_border,
+  weight = 1,
+  opacity = 0.95,
+  fillOpacity = 0.5,
+  label = ~name,
+  labelOptions = labelOptions(
+    direction = "auto",
+    textsize = "12px",
+    style = list("font-weight" = "normal", padding = "3px 8px")
+  ),
+  group = building_group
+)
+
 # Adiciona geometrias das rotas como camadas opcionais
 for (r_id in names(route_cols)) {
   map <- map %>% addPolylines(
@@ -273,7 +326,7 @@ map <- map %>%
     fillOpacity = 0.9, weight = 1.5, label = ~stop_name
   ) %>%
   addLayersControl(
-    overlayGroups = names(route_cols),
+    overlayGroups = c(names(route_cols), building_group),
     options = layersControlOptions(collapsed = FALSE)
   )
 
@@ -282,6 +335,7 @@ map <- map %>%
 map <- map %>% htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
   var routeColors = ", route_colors_js, ";
+  var layerColors = ", layer_colors_js, ";
   var styleEl = document.createElement('style');
   styleEl.setAttribute('id', 'routeHideStyle');
   document.head.appendChild(styleEl);
@@ -295,7 +349,11 @@ function(el, x) {
       while (lbl && lbl.tagName !== 'LABEL') lbl = lbl.parentElement;
       if (!lbl) continue;
       var name = (lbl.textContent || '').trim();
-      css += '.rt-' + name + '{display:none!important;}';
+      // Só as rotas usam classes rt-<ID>; a camada de edificações é
+      // controlada diretamente pelo LayersControl do Leaflet.
+      if (routeColors[name]) {
+        css += '.rt-' + name + '{display:none!important;}';
+      }
     }
     styleEl.textContent = css;
   };
@@ -308,7 +366,7 @@ function(el, x) {
       while (lbl && lbl.tagName !== 'LABEL') lbl = lbl.parentElement;
       if (!lbl) continue;
       var name = (lbl.textContent || '').trim();
-      var color = routeColors[name];
+      var color = layerColors[name];
       if (!color) continue;
       var swatch = document.createElement('span');
       swatch.style.display = 'inline-block';
@@ -365,7 +423,9 @@ function(el, x) {
   document.getElementById('routeOpacity').addEventListener('input', function(e) {
     var val = parseFloat(e.target.value);
     map.eachLayer(function(layer) {
-      if (layer instanceof L.Polyline) {
+      // Em Leaflet, polígonos também herdam de L.Polyline; excluí-los
+      // evita que o slider das rotas altere a transparência das edificações.
+      if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
         layer.setStyle({ opacity: val });
       }
     });
