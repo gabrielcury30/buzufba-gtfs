@@ -1,0 +1,8 @@
+11:27:10.273 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:27:10.314 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:27:10.314 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:27:10.318 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:27:17.452 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:27:17.486 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:27:17.486 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:27:17.487 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
