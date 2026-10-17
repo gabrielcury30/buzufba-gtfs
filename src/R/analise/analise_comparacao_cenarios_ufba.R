@@ -40,6 +40,17 @@ modos <- c("WALK", "TRANSIT")
 max_viagens_transporte <- 1L
 # 31 min mantém viagens de exatamente 30 minutos disponíveis para o corte <= 30.
 duracao_max_acessibilidade <- 31L
+duracao_max_espera <- 120L # duração máxima para observar a composição dos tempos de viagem
+
+# Unidades representativas dos fluxos principais.
+# IMPORTANTE: os valores à direita precisam corresponder EXATAMENTE ao campo 'name'
+# dos GeoPackages. O gráfico exibirá os nomes das regiões (à esquerda), não estes nomes.
+unidades_representativas <- c(
+  Ondina = "PAF I",
+  Engenharia = "Escola Politécnica",
+  Canela = "PAC",
+  Arquitetura = "Faculdade de Arquitetura e Urbanismo"
+)
 
 # FALSE reutiliza network.dat, se existir na pasta do cenário.
 # Altere para TRUE se você modificou algum GTFS, PBF ou TIF e precisa reconstruir.
@@ -354,5 +365,203 @@ criar_grafico_comparacao <- function(dados, limite = 15L) {
 
 grafico_15 <- criar_grafico_comparacao(comparacao, limite = 15L)
 grafico_30 <- criar_grafico_comparacao(comparacao, limite = 30L)
+
+# -----------------------------------------------------------------------------
+# 6. Tempo de espera nos principais fluxos OD: atual vs. intervenção
+# -----------------------------------------------------------------------------
+# Os quatro pontos representativos são extraídos de cada GeoPackage separado.
+# O fluxo é calculado nos dois sentidos para Engenharia, Canela e Arquitetura.
+
+# Verificar se os nomes configurados existem e obter seus IDs técnicos estáveis.
+ids_representantes <- cadastro_unidades$id[
+  match(unname(unidades_representativas), cadastro_unidades$unidade)
+]
+names(ids_representantes) <- names(unidades_representativas)
+
+if (anyNA(ids_representantes)) {
+  faltantes <- names(unidades_representativas)[is.na(ids_representantes)]
+  nomes_procurados <- unname(unidades_representativas)[is.na(ids_representantes)]
+  stop(
+    "Não encontrei no campo 'name' das edificações estas unidades representativas: ",
+    paste(paste0(faltantes, " = '", nomes_procurados, "'"), collapse = "; "),
+    ". Corrija 'unidades_representativas' no início do script para usar os nomes exatos do GeoPackage."
+  )
+}
+
+selecionar_pontos_representativos <- function(origens_destinos, cenario) {
+  indices <- match(unname(ids_representantes), origens_destinos$id)
+  if (anyNA(indices)) {
+    stop("Não foi possível selecionar todos os pontos representativos no cenário ", cenario, ".")
+  }
+  pontos <- origens_destinos[indices, c("id", "lon", "lat")]
+  rownames(pontos) <- NULL
+  pontos
+}
+
+pontos_fluxos_atual <- selecionar_pontos_representativos(origens_destinos_atual, "Atual")
+pontos_fluxos_intervencao <- selecionar_pontos_representativos(
+  origens_destinos_intervencao, "Intervenção"
+)
+
+# Seis fluxos direcionais: ida e volta para cada região de destino.
+fluxos_alvo <- data.frame(
+  origem_regiao = c("Ondina", "Engenharia", "Ondina", "Canela", "Ondina", "Arquitetura"),
+  destino_regiao = c("Engenharia", "Ondina", "Canela", "Ondina", "Arquitetura", "Ondina"),
+  stringsAsFactors = FALSE
+)
+fluxos_alvo$from_id <- unname(ids_representantes[fluxos_alvo$origem_regiao])
+fluxos_alvo$to_id <- unname(ids_representantes[fluxos_alvo$destino_regiao])
+fluxos_alvo$fluxo <- paste(fluxos_alvo$origem_regiao, "→", fluxos_alvo$destino_regiao)
+
+calcular_espera_fluxos <- function(caminho_rede, pontos, cenario) {
+  message("Calculando composição do tempo de viagem para os fluxos de ", cenario, "...")
+  
+  # A rede já foi construída/carregada na etapa de acessibilidade. Aqui o R5
+  # reutiliza o network.dat do mesmo cenário, evitando reconstruí-lo novamente.
+  rede <- r5r::build_network(
+    data_path = caminho_rede,
+    verbose = FALSE,
+    overwrite = FALSE
+  )
+  
+  tryCatch({
+    ettm <- r5r::expanded_travel_time_matrix(
+      r5r_network = rede,
+      origins = pontos,
+      destinations = pontos,
+      departure_datetime = data_hora_saida,
+      mode = modos,
+      max_rides = max_viagens_transporte,
+      max_trip_duration = duracao_max_espera,
+      time_window = janela_minutos,
+      breakdown = TRUE,
+      verbose = FALSE,
+      progress = TRUE
+    )
+    
+    colunas_necessarias <- c("from_id", "to_id", "wait_time", "total_time", "n_rides")
+    if (!all(colunas_necessarias %in% names(ettm))) {
+      stop(
+        "A matriz expandida do cenário '", cenario,
+        "' não contém as colunas esperadas. Recebi: ", paste(names(ettm), collapse = ", ")
+      )
+    }
+    
+    # Calcula a proporção em cada partida simulada e depois resume cada fluxo
+    # pela mediana. Filtra trajetos sem embarque em transporte público.
+    ettm |>
+      filter(
+        !is.na(n_rides), n_rides > 0,
+        is.finite(wait_time), wait_time >= 0,
+        is.finite(total_time), total_time > 0
+      ) |>
+      mutate(percentual_espera = 100 * wait_time / total_time) |>
+      filter(is.finite(percentual_espera)) |>
+      group_by(from_id, to_id) |>
+      summarise(
+        percentual_espera = median(percentual_espera, na.rm = TRUE),
+        observacoes = n(),
+        .groups = "drop"
+      )
+  }, finally = r5r::stop_r5(rede))
+}
+
+espera_atual <- calcular_espera_fluxos(
+  caminhos_rede[["Atual"]], pontos_fluxos_atual, "Atual"
+) |>
+  rename(percentual_espera_atual = percentual_espera,
+         observacoes_atual = observacoes)
+
+espera_intervencao <- calcular_espera_fluxos(
+  caminhos_rede[["Intervencao"]], pontos_fluxos_intervencao, "Intervenção"
+) |>
+  rename(percentual_espera_intervencao = percentual_espera,
+         observacoes_intervencao = observacoes)
+
+comparacao_espera <- fluxos_alvo |>
+  left_join(espera_atual, by = c("from_id", "to_id")) |>
+  left_join(espera_intervencao, by = c("from_id", "to_id")) |>
+  mutate(
+    diferenca_espera_pp = round(percentual_espera_intervencao - percentual_espera_atual, 1),
+    fluxo_plot = factor(fluxo, levels = rev(fluxos_alvo$fluxo))
+  )
+
+sem_rota <- comparacao_espera |>
+  filter(is.na(percentual_espera_atual) | is.na(percentual_espera_intervencao))
+if (nrow(sem_rota) > 0) {
+  message(
+    "Atenção: não foi possível calcular a espera em ambos os cenários para: ",
+    paste(sem_rota$fluxo, collapse = "; "),
+    ". Confira se há itinerários de transporte público viáveis na janela selecionada."
+  )
+}
+
+subtitulo_espera <- paste0(
+  "Caminhada + transporte público | saída em ",
+  format(data_hora_saida, "%d/%m/%Y às %H:%M"),
+  " | janela de ", janela_minutos, " min | mediana do percentual por partida"
+)
+
+grafico_espera <- ggplot(comparacao_espera, aes(y = fluxo_plot)) +
+  geom_segment(
+    aes(x = percentual_espera_atual, xend = percentual_espera_intervencao,
+        yend = fluxo_plot),
+    color = "#C8D0D9", linewidth = 1.1, na.rm = TRUE
+  ) +
+  geom_point(
+    aes(x = percentual_espera_atual, color = "Cenário atual"),
+    size = 3.2, na.rm = TRUE
+  ) +
+  geom_point(
+    aes(x = percentual_espera_intervencao, color = "Intervenção"),
+    size = 3.5, na.rm = TRUE
+  ) +
+  scale_color_manual(
+    name = "Cenário",
+    values = c("Cenário atual" = "#9ECAE1", "Intervenção" = "#2171B5")
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 100, by = 20),
+    labels = function(x) paste0(x, "%"),
+    limits = c(-5, 105),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_y_discrete(drop = FALSE) +
+  labs(
+    title = "Parcela do tempo total da viagem dedicada à espera",
+    subtitle = subtitulo_espera,
+    x = "Tempo de espera como percentual do tempo total da viagem",
+    y = NULL,
+    caption = paste0(
+      "Fluxos ida e volta entre Ondina e Engenharia, Canela e Arquitetura. \n",
+      "PAF 1 representa Ondina; Politécnica representa Engenharia; PAC representa Canela; e a unidade selecionada representa Arquitetura.\n",
+      "Cada ponto resume pela mediana as proporções wait_time/total_time das partidas simuladas. \n",
+      "Somente viagens com transporte público (n_rides > 0); máximo de embarques = ",
+      max_viagens_transporte, ". Pontos ausentes indicam ausência de viagem elegível no cenário."
+    )
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 17, color = "#172B4D"),
+    plot.subtitle = element_text(size = 10.5, color = "#52606D"),
+    axis.text.y = element_text(size = 10, color = "#243447"),
+    axis.title.x = element_text(face = "bold", margin = margin(t = 10)),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "top",
+    legend.justification = "left",
+    plot.caption = element_text(size = 8.5, color = "#52606D", hjust = 0),
+    plot.margin = margin(14, 22, 14, 14)
+  )
+
+ggsave(
+  filename = file.path(pasta_saida, "grafico_tempo_espera_fluxos_ufba.png"),
+  plot = grafico_espera,
+  width = 12,
+  height = 7,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
 
 message("Comparação concluída. Gráficos salvos em: ", normalizePath(pasta_saida))
