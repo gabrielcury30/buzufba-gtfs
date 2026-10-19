@@ -1,60 +1,144 @@
-14:36:24.021 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
-14:36:24.084 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
-14:36:24.085 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-14:36:24.115 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-14:36:24.798 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
-14:36:24.842 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
-14:36:24.843 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-14:36:24.843 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-14:36:30.485 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-14:36:30.486 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-14:36:30.486 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-14:36:30.488 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-14:36:31.038 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-14:36:31.041 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-14:36:31.041 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-14:36:31.041 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:02:19.039 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
-15:02:19.151 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
-15:02:19.153 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:02:19.154 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:02:19.996 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
-15:02:20.042 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
-15:02:20.043 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:02:20.043 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:02:23.054 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:02:23.071 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:02:23.072 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:02:23.072 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:02:23.616 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:02:23.621 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:02:23.622 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:02:23.622 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:08:17.586 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:08:17.586 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:08:17.591 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:08:17.592 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:12:42.055 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:12:42.061 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:12:42.062 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:12:42.062 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:12:42.968 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:12:42.973 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:12:42.973 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:12:42.974 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:27:30.202 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
-15:27:30.251 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
-15:27:30.251 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:27:30.252 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:27:31.033 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
-15:27:31.076 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
-15:27:31.077 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:27:31.078 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:27:34.082 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:27:34.114 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:27:34.115 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:27:34.115 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
-15:27:34.656 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
-15:27:34.660 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
-15:27:34.660 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
-15:27:34.660 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:39:55.757 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+10:39:55.779 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+10:39:55.779 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:39:55.783 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:40:02.125 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+10:40:02.163 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+10:40:02.164 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:40:02.165 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:40:07.470 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+10:40:07.470 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+10:40:07.471 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:40:07.471 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:40:08.588 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+10:40:08.601 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+10:40:08.602 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:40:08.603 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:54:37.016 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+10:54:37.091 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+10:54:37.093 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:54:37.093 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:54:43.467 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+10:54:43.525 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+10:54:43.525 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:54:43.526 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:54:46.852 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+10:54:46.854 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+10:54:46.854 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:54:46.854 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:54:47.969 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+10:54:47.971 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+10:54:47.972 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:54:47.972 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:59:54.021 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+10:59:54.063 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+10:59:54.064 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:59:54.064 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+10:59:59.806 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+10:59:59.833 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+10:59:59.833 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+10:59:59.834 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:00:02.951 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:00:02.952 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:00:02.954 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:00:02.954 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:00:03.978 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:00:03.987 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:00:03.987 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:00:03.988 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:02:08.014 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:02:08.071 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:02:08.072 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:02:08.072 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:02:14.298 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:02:14.323 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:02:14.323 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:02:14.324 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:02:17.614 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:02:17.620 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:02:17.621 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:02:17.621 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:02:18.680 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:02:18.684 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:02:18.684 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:02:18.685 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:07:26.885 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:07:26.906 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:07:26.906 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:07:26.907 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:07:33.232 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:07:33.250 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:07:33.251 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:07:33.251 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:07:36.151 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:07:36.153 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:07:36.153 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:07:36.154 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:07:37.122 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:07:37.141 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:07:37.142 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:07:37.143 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:15:52.011 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:15:52.030 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:15:52.031 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:15:52.031 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:15:57.856 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:15:57.883 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:15:57.884 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:15:57.885 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:16:01.108 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:16:01.110 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:16:01.110 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:16:01.110 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:16:02.194 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:16:02.196 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:16:02.196 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:16:02.196 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:21:19.536 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:21:19.552 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:21:19.568 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:21:19.568 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:21:25.178 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:21:25.196 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:21:25.197 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:21:25.197 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:21:28.345 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:21:28.347 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:21:28.347 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:21:28.348 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:21:29.337 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:21:29.342 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:21:29.343 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:21:29.343 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:26:37.367 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:26:37.396 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:26:37.396 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:26:37.397 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:26:42.922 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:26:42.947 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:26:42.947 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:26:42.948 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:26:46.165 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:26:46.193 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:26:46.195 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:26:46.195 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:26:47.211 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:26:47.212 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:26:47.213 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:26:47.213 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:39:44.612 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:39:44.655 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:39:44.655 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:39:44.656 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:39:50.510 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 51 origins processed.
+11:39:50.551 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 51 out of 51 origins processed.
+11:39:50.551 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:39:50.551 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:39:53.829 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:39:53.830 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:39:53.830 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:39:53.830 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!
+11:39:54.835 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 1 out of 4 origins processed.
+11:39:54.856 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - 4 out of 4 origins processed.
+11:39:54.857 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess - Consolidating results...
+11:39:54.857 [INFO ] org.ipea.r5r.Process.R5DataFrameProcess -  DONE!

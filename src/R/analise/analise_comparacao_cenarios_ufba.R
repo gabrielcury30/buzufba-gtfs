@@ -54,7 +54,7 @@ unidades_representativas <- c(
 
 # FALSE reutiliza network.dat, se existir na pasta do cenário.
 # Altere para TRUE se você modificou algum GTFS, PBF ou TIF e precisa reconstruir.
-reconstruir_redes <- FALSE
+reconstruir_redes <- TRUE
 
 if (!dir.exists(pasta_saida)) dir.create(pasta_saida, recursive = TRUE)
 
