@@ -464,12 +464,12 @@ seqs <- list(
       "GEOCIENCIAS", "PAF1_MAT")
   ),
   B3 = unir_circular(
-    c("PAF1_MAT", "GARIBALDI", "PROAE", "POLITECNICA_VOLTA", "SAO_LAZARO", 
-      "POLITECNICA", "CRECHE", "REITORIA_2", "BELAS_ARTES", "REITORIA", "CRECHE",
-      "GRACA_R2", "RESIDENCIA1"),
-    c("RESIDENCIA1_IDA", "DIREITO", "ISC_CANELA", "ODONTO", "REITORIA", "CRECHE", 
-      "POLITECNICA", "SAO_LAZARO", "POLITECNICA_VOLTA", "ARQUITETURA", "RESIDENCIA5",
-      "GEOCIENCIAS", "PAF1_MAT")
+    c("GEOCIENCIAS_INTERNO", "FACOM", "PORTARIA", "CENTRO_ESPORTES", "PAF1_B1", 
+      "GARIBALDI", "PROAE", "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA",
+      "POLITECNICA", "CRECHE", "REITORIA_2"),
+    c("RESIDENCIA1", "DIREITO_B5", "ISC_CANELA", "ODONTO", "REITORIA", "CRECHE", 
+      "POLITECNICA", "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA", 
+      "ARQUITETURA", "GEOCIENCIAS", "PAF1_B1", "PORTARIA", "FACOM", "GEOCIENCIAS_INTERNO")
   ),
   B4 = unir_circular(
     c("PAF1_MAT", "GARIBALDI", "PROAE", "POLITECNICA_VOLTA", "SAO_LAZARO", 
@@ -497,12 +497,12 @@ h_base <- list(
   B2 = list(full = c("06:00","07:40","09:20","11:00","12:40","14:20","16:00",
                      "17:40","19:20","21:00","22:40"), limite_noite = "19:20", 
             limite_sab = "14:20"),
-  B3 = list(full = c("06:30","07:40","08:50","10:00","11:10","12:20","13:30",
-                     "14:40","15:50","17:00","18:10","19:20","20:30","21:40",
-                     "22:50"), limite_noite = "18:10", limite_sab = "14:40"),
-  B4 = list(full = c("06:00","07:35","09:10","10:45","12:20","13:55","15:30",
-                     "17:05","18:40","20:15","21:50"), limite_noite = "18:40", 
-            limite_sab = "13:55"),
+  B3 = list(full = c("06:40","08:15","09:50","11:25","13:00","14:35","16:10",
+                     "17:45","19:20","20:55","22:30"), limite_noite = "17:45", 
+            limite_sab = "14:35"),
+  B4 = list(full = c("06:00","07:40","09:20","11:00","12:40","14:20","16:00",
+                     "17:40","19:20","21:00","22:40"), limite_noite = "19:20", 
+            limite_sab = "14:20"),
   B5 = list(full = c("06:40","08:15","09:50","11:25","13:00","14:35","16:10",
                      "17:45","19:20","20:55","22:30"), limite_noite = "17:45", 
             limite_sab = "14:35")
