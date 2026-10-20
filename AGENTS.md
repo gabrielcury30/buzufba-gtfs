@@ -18,7 +18,7 @@ Os resultados são simulações. Não os apresente como medições de operação
 - `data/edificacoes/`: GeoPackages de edificações para os cenários atual e de intervenção.
 - `data/shapes/`: geometria de shapes desenhados manualmente, usada pelo gerador GTFS quando disponível.
 - `data/pbf/` e `data/tif/`: insumos de rede viária OpenStreetMap e elevação.
-- `data/r5r_atual/` e `data/r5r_intervencao/`: diretórios de rede R5, incluindo arquivos de rede compilada e insumos associados.
+- `data/r5r_atual/` e `data/r5r_intervencao/`: diretórios locais de construção das redes R5. PBF, GTFS e TIF são insumos; `network.dat`, `*.mapdb*`, logs, relatórios de erros e `network_settings.json` são saídas locais regeneráveis e ignoradas pelo Git.
 - `data/gtfs/`: feeds GTFS exportados.
 - `data/img/`: gráficos e figuras gerados.
 
@@ -34,14 +34,16 @@ Os scripts usam caminhos relativos à raiz do repositório. Execute-os com a rai
 
 ## 3. Regras e restrições
 
-- Preserve os insumos originais em `data/`, especialmente GeoPackages, PBFs, GeoTIFFs e arquivos de rede. Não substitua nem regenere esses arquivos sem uma solicitação explícita.
+- Preserve os insumos originais em `data/`, especialmente GeoPackages, PBFs, GeoTIFFs e shapes manuais. Os arquivos de rede R5 compilados são derivados: podem ser reconstruídos dos insumos correspondentes e não devem ser adicionados ao Git.
 - Não leia nem carregue arquivos geoespaciais, redes compiladas ou outros binários grandes sem necessidade. Prefira inspecionar código, metadados e nomes/tamanhos dos arquivos.
-- Scripts podem criar ou sobrescrever artefatos (`.zip`, imagens e `index.html`). Antes de executá-los, verifique os caminhos de saída e os efeitos esperados. Não execute o pipeline completo para uma verificação simples.
+- Scripts podem criar ou sobrescrever artefatos (`.zip`, imagens, arquivos R5 e `index.html`). Antes de executá-los, verifique os caminhos de saída e os efeitos esperados. Não execute o pipeline completo para uma verificação simples.
 - A geração GTFS depende de um servidor Valhalla acessível em `http://localhost:8002`; o código atual usa `httr2`, não OSRM.
 - As análises R5 dependem de Java e da instalação compatível de `r5r`. O `.Rprofile` local configura `JAVA_HOME` por meio de `rJavaEnv`; não suponha que esse caminho exista em outras máquinas.
 - Respeite os identificadores e as relações do GTFS: `stop_id`, `route_id`, `trip_id`, `shape_id`, `service_id`, `stop_sequence` e os horários precisam permanecer consistentes entre tabelas.
 - Ao alterar paradas, sequências, shapes ou parâmetros de tempo, confira implicações para rotas circulares, passagens repetidas por uma parada e operação noturna.
 - O arquivo `data/shapes/shapes_manuais.gpkg`, quando presente, seleciona o modo de shapes manuais nos geradores. Não remova nem renomeie esse insumo como parte de uma alteração incidental.
+- Os PNGs de `data/img/comparacao_cenarios/` são saídas regeneráveis e ignoradas. As figuras em `notebooks/relatorio_estudo_buzufba_completo/relatorio_estudo_buzufba/figuras/` são snapshots preservados usados para renderizar o relatório histórico.
+- Os feeds em `data/gtfs/` e suas cópias de cenário são mantidos versionados: análises e animação os consomem diretamente, e a geração depende de Valhalla local. Ao mudar geradores ou insumos, não os remova sem definir e validar uma substituição reprodutível.
 - Separe resultados do cenário atual e de intervenção. Confira quais GTFS e edificações cada análise consome antes de interpretar ou atualizar figuras.
 - Não inclua chaves, credenciais, dados pessoais ou segredos em código, documentação ou saídas versionadas.
 
@@ -115,7 +117,8 @@ Não há, no momento, uma suíte de testes automatizados ou manifesto de depend�
 - O README também mostra uma estrutura de dados diferente da existente (por exemplo, `data/r5r/ufba.pbf`); confira sempre os caminhos efetivos nos scripts e a estrutura atual antes de seguir instruções antigas.
 - `src/R/analise/analise_acessibilidade.R` aponta para `data/r5r`, enquanto as pastas observadas para redes são `data/r5r_atual/` e `data/r5r_intervencao/`.
 - Há uma cópia do script de comparação dentro do pacote do relatório. Ao alterar a análise, compare essa cópia com `src/R/analise/analise_comparacao_cenarios_ufba.R`; não assuma que sejam sincronizadas.
-- `index.html` e `README.html` são artefatos renderizados; faça alterações em suas fontes quando existirem e regenere-os somente quando a tarefa pedir ou exigir isso.
+- `index.html` é um artefato renderizado, mas permanece versionado como entrada do GitHub Pages; só o regenere quando a tarefa envolver a publicação da animação. `README.html` e o HTML renderizado do relatório são saídas locais ignoradas pelo Git.
+- O manual `notebooks/documentacao_script_gtfs.qmd` referencia `paradas_gtfs.png` e `rotab1_gtfs.png`, que não existem atualmente no repositório. Considere isso ao renderizar ou atualizar esse documento.
 
 ## 8. Questões de domínio a confirmar
 
