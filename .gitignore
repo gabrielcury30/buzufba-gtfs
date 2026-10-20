@@ -3,9 +3,12 @@
 .Rhistory
 .RData
 .Ruserdata
-*.Rproj
 .Rcheck/
 .httr-oauth
+.Rprofile
+
+# Java local environment created by rJavaEnv
+rjavaenv/
 
 # Claude Code
 CLAUDE.md
@@ -29,6 +32,7 @@ rosm.cache/
 # Quarto
 *.pdf
 *.tex
+!notebooks/relatorio_estudo_buzufba_completo/relatorio_estudo_buzufba/insumos/rota_buzufba_2026.pdf
 
 # Posit Connect Cloud
 _publish.yml
@@ -38,7 +42,13 @@ rsconnect/
 
 # r5r
 data/r5r/
+data/r5r_*/network.dat
+data/r5r_*/*.mapdb
+data/r5r_*/*.mapdb.*
+data/r5r_*/network_settings.json
+data/r5r_*/gtfs_errors.csv
+data/r5r_*/r5r-log.log
 
-# RJavaEnv
-.Rprofile
-rjavaenv/
+# Reproducible analysis outputs; archived report figures live under notebooks/
+/data/img/comparacao_cenarios/
+/notebooks/relatorio_estudo_buzufba_completo/relatorio_estudo_buzufba/relatorio_estudo_buzufba.html
