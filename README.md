@@ -59,32 +59,15 @@ O projeto é estruturado de forma lógica para separar dados brutos, modelos ger
 
 ```text
 buzufba-gtfs/
-├── data/                               # Armazenamento central de dados
-│   ├── edificacoes/
-│   │   └── edif_ufba.gpkg              # Malha espacial das edificações e unidades da UFBA (Geopackage)
-│   ├── gtfs/
-│   │   └── buzufba_gtfs.zip            # Feed GTFS final gerado e exportado pelo pipeline
-│   ├── pbf/
-│   │   └── ufba.pbf                    # Rede de ruas e calçadas do OpenStreetMap (extrato UFBA)
-│   ├── r5r/                            # Diretório de rede multimodal para a engine R5R
-│   │   ├── buzufba_gtfs.zip            # GTFS copiado para acoplamento na rede multimodal
-│   │   ├── salvador_mde.tif            # Modelo Digital de Elevação (MDE) para ajuste de esforço de caminhada/bike
-│   │   ├── ufba.pbf                    # Cópia do OSM para o roteamento do R5
-│   │   └── network.dat                 # Rede de transporte multimodal compilada pelo R5R (Gerada automaticamente)
-│   └── tif/
-│       └── salvador_mde.tif            # Arquivo raster original de relevo
-├── notebooks/
-│   └── documentacao_script_gtfs.qmd    # Notebook Quarto contendo análises interativas e documentação do fluxo
-├── src/                                # Código-fonte do projeto
-│   └── R/
-│       ├── analise/
-│       │   └── analise_acessibilidade.R # Avaliação de matriz de tempo de viagem e acessibilidade usando r5r
-│       ├── animacao/
-│       │   └── animacao_buzufba.R       # Geração de um mapa animado e interativo em HTML do BUZUFBA
-│       └── gtfs/
-│           └── gtfs.R                   # Script core que constrói e exporta o feed GTFS válido
-├── README.Rmd                          # Código fonte da documentação (R Markdown)
-└── README.md                           # Documentação renderizada para consumo imediato
+├── R/                                  # Funções reutilizáveis do pipeline GTFS
+├── scripts/                            # Pontos de entrada executáveis
+├── analysis/                           # Relatórios e documentação Quarto
+├── data/
+│   ├── raw/                            # Insumos geoespaciais versionados
+│   └── processed/                      # Saídas regeneráveis, não versionadas
+├── img/                                # Figuras de análises
+├── buzufba-gtfs.Rproj
+└── README.md
 ```
 
 ---
@@ -97,15 +80,15 @@ Devido à integração com o **R5** (uma engine de roteamento de alto desempenho
 
 ### Requisitos do Sistema
 1. **Java Development Kit (JDK) 11 ou 21:** Necessário para o funcionamento do motor de roteamento multimodal `r5r`. Certifique-se de que a variável de ambiente `JAVA_HOME` está devidamente configurada.
-2. **Conexão com a Internet:** Requerida para a primeira compilação da rede OSRM e download de dependências geográficas.
+2. **Valhalla local:** Necessário para calcular tempos de viagem; o gerador consulta `http://localhost:8002`.
 
 ### Instalação de Pacotes R
 
 Abra o console do R e execute as instruções abaixo de acordo com sua necessidade:
 
-#### Dependências de Geração do GTFS (`src/R/gtfs/gtfs.R`)
+#### Dependências de Geração do GTFS (`scripts/gtfs.R`)
 ```r
-install.packages(c("gtfstools", "tidyverse", "data.table", "osrm", "sf", "mapview"))
+install.packages(c("data.table", "dplyr", "gtfstools", "httr2", "jsonlite", "purrr", "sf", "tibble", "units"))
 ```
 
 #### Dependências de Roteamento e Acessibilidade (`src/R/analise/analise_acessibilidade.R`)
@@ -128,20 +111,20 @@ O pipeline foi desenhado para ser executado de forma sequencial, onde cada etapa
 
 ```mermaid
 graph TD
-    A[src/R/gtfs/gtfs.R] -->|Gera buzufba_gtfs.zip| B(data/gtfs/)
-    B -->|Copiado para r5r/| C[src/R/analise/analise_acessibilidade.R]
-    B -->|Lido pelo simulador| D[src/R/animacao/animacao_buzufba.R]
+    A[scripts/gtfs.R] -->|Gera buzufba_gtfs.zip| B[data/processed/]
+    B -->|Copiado para r5r| C[scripts/analise_comparacao_cenarios_ufba.R]
+    B -->|Lido pelo simulador| D[scripts/animacao_buzufba.R]
     C -->|Gera matriz de tempos| E[Avaliação de Acessibilidade Espacial]
     D -->|Gera simulação| F[HTML Animado e Interativo de Operação]
 ```
 
 ### Etapa 1: Geração de GTFS
-O script `src/R/gtfs/gtfs.R` monta de maneira programática todas as tabelas mandatórias e opcionais do padrão GTFS (`agency`, `routes`, `stops`, `trips`, `stop_times`, `calendar`, `shapes`, `feed_info`). O traçado geográfico exato das vias e paradas utiliza chamadas para a API do **OSRM** para garantir curvas realistas nas avenidas de Salvador.
+O script `scripts/gtfs.R` monta as tabelas do padrão GTFS (`agency`, `routes`, `stops`, `trips`, `stop_times`, `calendar`, `shapes` e `feed_info`). As funções ficam em `R/`, os shapes manuais são lidos de `data/raw/shapes_rotas_buzufba.gpkg`, e o Valhalla local calcula os tempos de percurso.
 
-```r
-source("src/R/gtfs/gtfs.R")
+```powershell
+Rscript scripts/gtfs.R
 ```
-*Insumo Gerado:* `data/gtfs/buzufba_gtfs.zip`
+*Insumo Gerado:* `data/processed/buzufba_gtfs.zip` (regenerável e ignorado pelo Git).
 *Documentação do Script:* O script em R do GTFS foi documentado e pode ser acessado através do [link](https://01a08be6-dcfd-7112-31db-cec7d0804ee0.share.connect.posit.cloud/).
 
 ### Etapa 2: Análise de Acessibilidade Espacial

@@ -69,3 +69,6 @@ Thumbs.db
 # Quarto
 *.pdf
 *.tex
+
+# gtfs processado
+/data/processed/*.zip
