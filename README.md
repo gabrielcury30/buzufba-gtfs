@@ -136,12 +136,12 @@ source("src/R/analise/analise_acessibilidade.R")
 *Insumo Gerado:* Matrizes de tempo de viagem e relatórios de acessibilidade espacial integrados.
 
 ### Etapa 3: Animação e Simulação Dinâmica
-O script `src/R/animacao/animacao_buzufba.R` converte o feed estático GTFS em coordenadas espaço-temporais (usando algoritmo de interpolação) e renderiza uma animação mostrando o comportamento estimado da frota ao longo de um dia de operação.
+O script `scripts/animacao_buzufba.R` converte o feed GTFS em coordenadas espaço-temporais usando interpolação e renderiza um mapa animado. As funções de preparação e interpolação ficam em `R/animacao_funcoes.R`.
 
 ```r
-source("src/R/animacao/animacao_buzufba.R")
+Rscript scripts/animacao_buzufba.R
 ```
-*Insumo Gerado:* HTML animado e interativo de alta resolução mostrando os ônibus trafegando ao longo das vias urbanas. A página pode ser acessada através do [GitHub Pages](https://gabrielcury30.github.io/buzufba-gtfs/) do projeto.
+*Insumo Gerado:* `data/processed/animacao_buzufba.html`. O feed GTFS deve estar em `data/processed/buzufba_gtfs.zip`.
 
 ---
 

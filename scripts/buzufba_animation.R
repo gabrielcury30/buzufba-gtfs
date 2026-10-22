@@ -1,23 +1,37 @@
 ##### Setup e Carregamento de Dados #####
-# Bibliotecas para manipulação de GTFS, 
-# dados espaciais e visualização interativa
-library(tidytransit)
+localizar_diretorio_projeto <- function() {
+  argumentos <- commandArgs(trailingOnly = FALSE)
+  argumento_arquivo <- grep("^--file=", argumentos, value = TRUE)
+  if (length(argumento_arquivo) > 0) {
+    caminho_script <- normalizePath(sub("^--file=", "", argumento_arquivo[1]), mustWork = TRUE)
+    return(normalizePath(file.path(dirname(caminho_script), ".."), mustWork = TRUE))
+  }
+
+  diretorio <- normalizePath(getwd(), mustWork = TRUE)
+  while (!file.exists(file.path(diretorio, "buzufba-gtfs.Rproj"))) {
+    diretorio_pai <- dirname(diretorio)
+    if (diretorio_pai == diretorio) stop("Não foi possível localizar a raiz do projeto.", call. = FALSE)
+    diretorio <- diretorio_pai
+  }
+  diretorio
+}
+
+diretorio_projeto <- localizar_diretorio_projeto()
+source(file.path(diretorio_projeto, "R", "animation_functions.R"), local = FALSE)
+
+pacotes <- c("dplyr", "geojsonio", "htmlwidgets", "leaflet", "leaftime", "sf", "stinepack", "tidytransit")
+ausentes <- pacotes[!vapply(pacotes, requireNamespace, logical(1), quietly = TRUE)]
+if (length(ausentes) > 0) stop("Instale os pacotes R necessários: ", paste(ausentes, collapse = ", "), call. = FALSE)
+
 library(dplyr)
-library(lubridate)
 library(leaflet)
-library(leaftime)
-library(geojsonio)
-library(htmlwidgets)
-library(stinepack)
 library(sf)
 
-# Caminhos dos dados e parâmetros básicos de simulação
-feed_path      <- "data/gtfs/buzufba_gtfs.zip"
-buildings_path <- "data/edificacoes/edificacoes.gpkg" # Deixe o GPKG no diretório de trabalho do R
-transit_type   <- 3 # Define que o tipo de transporte é ônibus
+feed_path <- file.path(diretorio_projeto, "data", "processed", "buzufba_gtfs.zip")
+buildings_path <- file.path(diretorio_projeto, "data", "raw", "edificacoes_ufba.gpkg")
+output_path <- file.path(diretorio_projeto, "data", "processed", "animacao_buzufba.html")
+transit_type <- 3
 
-# Carrega as edificações da UFBA. O arquivo fornecido está em EPSG:4326
-# e contém o campo 'name', usado no tooltip ao passar o mouse.
 if (!file.exists(buildings_path)) {
   stop(sprintf(
     "Arquivo de edificações não encontrado: '%s'. Ajuste buildings_path.",
@@ -38,131 +52,75 @@ edificacoes_sf <- edificacoes_sf %>%
   )) %>%
   st_transform(crs = 4326)
 
-# Estilo da camada de edificações (distinto das cores das rotas)
-building_fill   <- "#E9C46A"
+building_fill <- "#E9C46A"
 building_border <- "#725C2D"
-building_group  <- "Edificações UFBA"
+building_group <- "Edificações UFBA"
 
-
-# Configuração da data e janela de tempo para animação
-dep_date     <- as.Date("2026-09-21")
+dep_date <- as.Date("2026-09-21")
 min_dep_time <- "06:00:00"
 max_arv_time <- "23:30:00"
 
 # Parâmetros de interpolação: passos de tempo e tamanho do rastro (tail)
-step_sec  <- 5
+step_sec <- 5
 trail_sec <- 20
 
-# Cores definidas para cada rota (mapeamento ID -> HEX)
-route_cols <- c(B1="#E41A1C", B2="#377EB8", B3="#4DAF4A", B4="#984EA3", 
-                B5="#FF7F00")
+route_cols <- c(
+  B1 = "#E41A1C", B2 = "#377EB8", B3 = "#4DAF4A", B4 = "#984EA3",
+  B5 = "#FF7F00"
+)
 
 route_colors_js <- paste0(
   "{", paste0('"', names(route_cols), '":"', unname(route_cols), '"', collapse = ","), "}"
 )
 
-# Mapeamento de cores usado apenas nos quadradinhos do controle de camadas
 layer_cols <- c(route_cols, setNames(building_fill, building_group))
 layer_colors_js <- paste0(
   "{", paste0('"', names(layer_cols), '":"', unname(layer_cols), '"', collapse = ","), "}"
 )
 
-# Leitura do GTFS e filtragem dos IDs de rota e viagem de interesse
-gtfs <- read_gtfs(feed_path)
-route_ids <- gtfs$routes %>% filter(route_type == transit_type) %>% 
+gtfs <- tidytransit::read_gtfs(feed_path)
+route_ids <- gtfs$routes %>%
+  filter(route_type == transit_type) %>%
   pull(route_id)
-trip_ids  <- gtfs$trips  %>% filter(route_id %in% route_ids)  %>% pull(trip_id)
+trip_ids <- gtfs$trips %>%
+  filter(route_id %in% route_ids) %>%
+  pull(trip_id)
 
 ##### 1) Distância acumulada do shape (haversine + cumsum) #####
-# Função para calcular distância entre dois pontos geográficos usando a fórmula
-# de Haversine
-haversine_m <- function(lat1, lon1, lat2, lon2) {
-  rad <- pi / 180; R <- 6371000 # Raio da Terra em metros
-  dlat <- (lat2 - lat1) * rad; dlon <- (lon2 - lon1) * rad
-  a <- sin(dlat/2)^2 + cos(lat1*rad)*cos(lat2*rad)*sin(dlon/2)^2
-  2 * R * asin(sqrt(a))
-}
-
-# Adensa o shape: insere pontos intermediários (em linha reta) de modo que haja
-# um vértice a cada ~step_m metros. Não altera o desenho. É necessário porque
-# shapes desenhados à mão têm poucos vértices (ex.: 1 a cada 50-100 m), o que
-# deixaria o "encaixe" das paradas grosseiro.
-densify_shape <- function(df, step_m = 10) {
-  n <- nrow(df)
-  if (n < 2) return(df[, c("shape_pt_lat", "shape_pt_lon")])
-  seg <- haversine_m(df$shape_pt_lat[-n], df$shape_pt_lon[-n],
-                     df$shape_pt_lat[-1], df$shape_pt_lon[-1])
-  k <- pmax(1L, as.integer(ceiling(seg / step_m)))  # subdivisões por segmento
-  i <- rep(seq_len(n - 1), k)                       # segmento de cada ponto novo
-  f <- (sequence(k) - 1) / k[i]                     # fração dentro do segmento
-  tibble::tibble(
-    shape_pt_lat = c(df$shape_pt_lat[i] + f * (df$shape_pt_lat[i + 1] - df$shape_pt_lat[i]),
-                     df$shape_pt_lat[n]),
-    shape_pt_lon = c(df$shape_pt_lon[i] + f * (df$shape_pt_lon[i + 1] - df$shape_pt_lon[i]),
-                     df$shape_pt_lon[n])
-  )
-}
-
-# Calcula a distância total percorrida ao longo de cada 'shape' (traçado)
 shapes_dist <- gtfs$shapes %>%
   arrange(shape_id, shape_pt_sequence) %>%
   group_by(shape_id) %>%
-  group_modify(~ densify_shape(.x, step_m = 10)) %>%
-  mutate(shape_pt_sequence = row_number(),
-         shape_dist_traveled = cumsum(c(0, haversine_m(
-           shape_pt_lat[-n()], shape_pt_lon[-n()],
-           shape_pt_lat[-1],  shape_pt_lon[-1])))) %>%
+  group_modify(~ adensar_shape(.x, passo_m = 10)) %>%
+  mutate(
+    shape_pt_sequence = row_number(),
+    shape_dist_traveled = cumsum(c(0, calcular_distancia_haversine(
+      shape_pt_lat[-n()], shape_pt_lon[-n()],
+      shape_pt_lat[-1], shape_pt_lon[-1]
+    )))
+  ) %>%
   ungroup()
 
 ##### 2) Snap monotônico das paradas no shape #####
-# Função para encontrar a posição (distância) de cada parada no 
-# shape mais próximo
-# A busca é sempre para frente (a partir da parada anterior) e usa a PRIMEIRA
-# passagem do shape a menos de 'tol_m' metros da parada. Isso evita que, em rotas
-# circulares (início e fim no mesmo local), a primeira parada seja encaixada no
-# FIM do shape e todas as seguintes "colapsem" no mesmo ponto.
-# Se nenhuma passagem estiver dentro da tolerância, usa a mais próxima e avisa.
-snap_stops <- function(stop_lat, stop_lon, shp, tol_m = 30) {
-  n <- nrow(shp); last <- 1L; out <- numeric(length(stop_lat))
-  for (i in seq_along(stop_lat)) {
-    d <- haversine_m(stop_lat[i], stop_lon[i],
-                     shp$shape_pt_lat[last:n], shp$shape_pt_lon[last:n])
-    perto <- which(d <= tol_m)
-    if (length(perto) > 0) {
-      ini <- perto[1]; fim <- ini
-      while (fim < length(d) && d[fim + 1] <= tol_m) fim <- fim + 1
-      k <- ini - 1L + which.min(d[ini:fim])   # melhor ponto da 1ª passagem
-    } else {
-      k <- which.min(d)
-      warning(sprintf("Parada #%d fica a %.0f m do shape '%s'.", 
-                      i, d[k], shp$shape_id[1]), call. = FALSE)
-    }
-    j <- last + k - 1L
-    out[i] <- shp$shape_dist_traveled[j]; last <- j # Atualiza posição
-  }
-  out
-}
-
-# Junta informações de paradas com shapes para calcular distâncias precisas
-trips_shapes <- gtfs$trips %>% filter(trip_id %in% trip_ids) %>%
+trips_shapes <- gtfs$trips %>%
+  filter(trip_id %in% trip_ids) %>%
   select(trip_id, route_id, shape_id)
 
-st <- gtfs$stop_times %>% filter(trip_id %in% trip_ids) %>%
+st <- gtfs$stop_times %>%
+  filter(trip_id %in% trip_ids) %>%
   inner_join(gtfs$stops, by = "stop_id") %>%
   inner_join(trips_shapes, by = "trip_id") %>%
   arrange(trip_id, stop_sequence) %>%
   group_by(trip_id) %>%
-  group_modify(~ mutate(.x, dist = snap_stops(
+  group_modify(~ mutate(.x, dist = encaixar_paradas_no_shape(
     .x$stop_lat, .x$stop_lon,
-    shapes_dist %>% filter(shape_id == first(.x$shape_id))))) %>%
+    shapes_dist %>% filter(shape_id == first(.x$shape_id))
+  ))) %>%
   ungroup()
 
-# Cria lista de paradas únicas para exibição no mapa
 unique_stops <- st %>%
   distinct(stop_id, stop_name, stop_lat, stop_lon)
 
 ##### Prepara geometrias das rotas (shapes) #####
-# Converte pontos dos shapes para linhas (sf LineString) e simplifica
 route_shapes_sf <- gtfs$shapes %>%
   filter(shape_id %in% trips_shapes$shape_id) %>%
   inner_join(trips_shapes %>% distinct(shape_id, route_id), by = "shape_id") %>%
@@ -174,69 +132,18 @@ route_shapes_sf <- gtfs$shapes %>%
   mutate(color = unname(route_cols[route_id]))
 
 ##### 3) Posições interpoladas para animação (com interpolação Stine) #####
-# Função para gerar pontos animados (tempo-localização) por viagem
-make_points <- function(tr) {
-  
-  # Seleciona geometria do shape correspondente
-  shp <- shapes_dist %>% filter(shape_id == tr$shape_id[1]) %>%
-    select(dist = shape_dist_traveled,
-           lat = shape_pt_lat, lon = shape_pt_lon) %>%
-    mutate(time = as.POSIXct(NA_real_, origin = "1970-01-01"))
-  
-  # Seleciona tempos de chegada nas paradas
-  stops <- st %>% filter(trip_id == tr$trip_id[1]) %>%
-    mutate(time = as.POSIXct(paste(dep_date, as.character(arrival_time)),
-                             tz = "America/Bahia"),
-           lat = stop_lat, lon = stop_lon) %>%
-    select(dist, time, lat, lon)
-  
-  # Combina paradas e shape, garantindo distâncias crescentes
-  comb <- bind_rows(stops, shp) %>%
-    arrange(dist) %>% group_by(dist) %>% filter(row_number() == 1) %>% ungroup()
-  
-  # Precisa de ao menos 2 paradas com tempo conhecido para interpolar
-  if (sum(!is.na(comb$time)) < 2) {
-    warning(sprintf("Viagem '%s' ignorada: paradas encaixadas no mesmo ponto do shape.", 
-                    tr$trip_id[1]), call. = FALSE)
-    return(NULL)
-  }
-  
-  # Interpolação suave de Stine para evitar sobressaltos na animação
-  comb$time_i <- as.numeric(stinepack::na.stinterp(
-    as.numeric(comb$time), along = comb$dist, na.rm = FALSE))
-  
-  cc <- comb %>% filter(!is.na(time_i), !is.na(lat)) %>%
-    distinct(time_i, .keep_all = TRUE)
-  if (nrow(cc) < 2) return(NULL)
-  
-  # Cria sequências de pontos com intervalos fixos (step_sec)
-  xs <- seq(min(cc$time_i), max(cc$time_i), by = step_sec)
-  la <- approx(cc$time_i, cc$lat, xout = xs)$y
-  lo <- approx(cc$time_i, cc$lon, xout = xs)$y
-  
-  # Retorna dataframe formatado para a animação do 'leaftime'
-  data.frame(
-    lat = la, lon = lo,
-    start = format(as.POSIXct(xs,             origin = "1970-01-01", 
-                              tz = "America/Bahia"),
-                   "%Y-%m-%dT%H:%M:%S"),
-    end   = format(as.POSIXct(xs + trail_sec, origin = "1970-01-01", 
-                              tz = "America/Bahia"),
-                   "%Y-%m-%dT%H:%M:%S"),
-    color = unname(route_cols[tr$route_id[1]]),
-    route_id = tr$route_id[1]
-  )
-}
+t0 <- format(
+  as.POSIXct(paste(dep_date, min_dep_time), tz = "America/Bahia"),
+  "%Y-%m-%dT%H:%M:%S"
+)
+t1 <- format(
+  as.POSIXct(paste(dep_date, max_arv_time), tz = "America/Bahia"),
+  "%Y-%m-%dT%H:%M:%S"
+)
 
-# Formata início e fim da animação
-t0 <- format(as.POSIXct(paste(dep_date, min_dep_time), tz = "America/Bahia"), 
-             "%Y-%m-%dT%H:%M:%S")
-t1 <- format(as.POSIXct(paste(dep_date, max_arv_time), tz = "America/Bahia"), 
-             "%Y-%m-%dT%H:%M:%S")
-
-# Executa a interpolação para todas as viagens e filtra dentro da janela
-pts <- bind_rows(lapply(split(trips_shapes, trips_shapes$trip_id), 
-                        make_points)) %>%
+pts <- bind_rows(lapply(split(trips_shapes, trips_shapes$trip_id), function(viagem) {
+  criar_pontos_animacao(viagem, shapes_dist, st, dep_date, step_sec, trail_sec, route_cols)
+})) %>%
   filter(start >= t0, start <= t1)
 
 ### 4) Criação do mapa interativo com timeline #####
@@ -249,15 +156,15 @@ map <- leaflet() %>%
     ),
     attribution = paste0(
       '&copy; <a href="https://www.openstreetmap.org/copyright">',
-      'OpenStreetMap</a>, ',
+      "OpenStreetMap</a>, ",
       '&copy; <a href="https://carto.com/attributions">',
-      'CARTO</a>'
+      "CARTO</a>"
     ),
     options = tileOptions(
       subdomains = "abcd",
       maxZoom = 20
     )
-  ) %>% # Mapa base
+  ) %>%
   setView(lng = -38.510, lat = -12.999, zoom = 13)
 
 # Camada opcional das edificações. É adicionada antes das rotas para que
@@ -278,7 +185,6 @@ map <- map %>% addPolygons(
   group = building_group
 )
 
-# Adiciona geometrias das rotas como camadas opcionais
 for (r_id in names(route_cols)) {
   map <- map %>% addPolylines(
     data = route_shapes_sf %>% filter(route_id == r_id),
@@ -287,10 +193,9 @@ for (r_id in names(route_cols)) {
   )
 }
 
-# Configura o timeline (leaftime) para animar os pontos dos ônibus
-map <- map %>% addTimeline(
+map <- map %>% leaftime::addTimeline(
   data = geojsonio::geojson_json(pts, lat = "lat", lon = "lon"),
-  timelineOpts = timelineOptions(
+  timelineOpts = leaftime::timelineOptions(
     pointToLayer = htmlwidgets::JS("
 function(data, latlng) {
   // Guarda o instante de cada posição para calcular dinamicamente a idade
@@ -307,15 +212,15 @@ function(data, latlng) {
   return marker;
 }")
   ),
-  sliderOpts = sliderOptions(
-    position   = "bottomleft",
-    duration   = 525000,
-    steps       = 200000,
-    showTicks  = FALSE,
+  sliderOpts = leaftime::sliderOptions(
+    position = "bottomleft",
+    duration = 525000,
+    steps = 200000,
+    showTicks = FALSE,
     formatOutput = htmlwidgets::JS("
       function(date) {
         var d = new Date(date);
-        return ('0' + d.getHours()).slice(-2) + ':' + ('0' + 
+        return ('0' + d.getHours()).slice(-2) + ':' + ('0' +
         d.getMinutes()).slice(-2);
       }")
   )
@@ -323,7 +228,6 @@ function(data, latlng) {
 
 button_jump_sec <- 50
 
-# Adiciona paradas fixas e controle de camadas
 map <- map %>%
   addCircleMarkers(
     data = unique_stops, lng = ~stop_lon, lat = ~stop_lat,
@@ -335,9 +239,8 @@ map <- map %>%
     options = layersControlOptions(collapsed = FALSE)
   )
 
-# Lógica JS customizada para mostrar/esconder rotas via checkbox 
-# (conecta com a classe CSS)
-map <- map %>% htmlwidgets::onRender(htmlwidgets::JS(paste0("
+map <- map %>%
+  htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
   var routeColors = ", route_colors_js, ";
   var layerColors = ", layer_colors_js, ";
@@ -362,8 +265,7 @@ function(el, x) {
     }
     styleEl.textContent = css;
   };
-  
-  // Insere um quadradinho colorido ao lado de cada checkbox, usando routeColors
+
   var addSwatches = function() {
     var inputs = el.querySelectorAll('.leaflet-control-layers-overlays input[type=checkbox]');
     for (var i = 0; i < inputs.length; i++) {
@@ -386,7 +288,7 @@ function(el, x) {
     }
   };
   addSwatches();
-  
+
   el.addEventListener('change', function(ev) {
     var t = ev.target;
     if (!t || t.tagName !== 'INPUT' || t.type !== 'checkbox') return;
@@ -395,11 +297,11 @@ function(el, x) {
 
   refresh();
 }
-"))) %>% htmlwidgets::onRender(htmlwidgets::JS(paste0("
+"))) %>%
+  htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
-  var map = this; // instância do Leaflet Map
+  var map = this;
 
-  // Cria o painel de controles como um L.control flutuante
   var opacityControl = L.control({position: 'bottomright'});
   opacityControl.onAdd = function() {
     var div = L.DomUtil.create('div', 'opacity-control');
@@ -424,7 +326,6 @@ function(el, x) {
   };
   opacityControl.addTo(map);
 
-  // Opacidade das linhas de rota
   document.getElementById('routeOpacity').addEventListener('input', function(e) {
     var val = parseFloat(e.target.value);
     map.eachLayer(function(layer) {
@@ -436,7 +337,6 @@ function(el, x) {
     });
   });
 
-  // Opacidade do mapa base (tiles)
   document.getElementById('baseOpacity').addEventListener('input', function(e) {
     var val = parseFloat(e.target.value);
     map.eachLayer(function(layer) {
@@ -482,7 +382,6 @@ function(el, x) {
       });
     }
 
-    // Os marcadores do leaftime ficam dentro de grupos de camadas.
     if (typeof layer.eachLayer === 'function') {
       layer.eachLayer(function(child) {
         updateTrailLayer(child, currentTime);
@@ -504,11 +403,11 @@ function(el, x) {
     timelineSlider.addEventListener('input', updateBusTrail);
     timelineSlider.addEventListener('change', updateBusTrail);
   }
-  // Atualiza também durante a reprodução automática, mesmo sem interação manual.
+
   window.setInterval(updateBusTrail, 100);
   updateBusTrail();
 }
-"))) %>% 
+"))) %>%
   htmlwidgets::onRender(htmlwidgets::JS(paste0("
 function(el, x) {
   var jumpMs = ", button_jump_sec * 1000, ";
@@ -540,5 +439,6 @@ function(el, x) {
 }
 ")))
 
-# Salva o resultado final como um arquivo HTML
-htmlwidgets::saveWidget(map, "index.html", selfcontained = TRUE)
+dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
+htmlwidgets::saveWidget(map, output_path, selfcontained = TRUE)
+message("Animação salva em '", output_path, "'.")

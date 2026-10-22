@@ -70,5 +70,7 @@ Thumbs.db
 *.pdf
 *.tex
 
-# gtfs processado
+# Data processed by the scripts
 /data/processed/*.zip
+/data/processed/*.html
+/data/processed/animacao_buzufba_files
