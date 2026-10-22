@@ -69,3 +69,15 @@ Thumbs.db
 # Quarto
 *.pdf
 *.tex
+
+# Data processed by the scripts
+/data/processed/*.zip
+/data/processed/*.html
+/data/processed/animacao_buzufba_files
+
+# Redes R5 e dados locais usados pela comparação de cenários
+/data/processed/r5r/
+/data/processed/r5r_intervencao/
+
+# Diretório de imagens geradas pelas análises
+figures/
