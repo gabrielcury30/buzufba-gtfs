@@ -69,6 +69,7 @@ Thumbs.db
 # Quarto
 *.pdf
 *.tex
+analysis/*.html
 
 # Data processed by the scripts
 /data/processed/*.zip

@@ -1,0 +1,464 @@
+---
+title: "Como o GTFS do BUZUFBA é gerado?"
+subtitle: "Arquitetura e fluxo do script `scripts/gtfs.R` explicada"
+author: "Gabriel Cury"
+date: today
+date-format: "DD/MM/YYYY"
+lang: pt
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    self-contained: true
+    theme: cosmo
+    df-print: kable
+    
+execute:
+  echo: true
+  eval: false
+  warning: false
+  message: false
+---
+
+## Objetivo e visão geral
+
+Este relatório explica como o código atual gera o feed gtfs do buzufba. Ele acompanha a organização do repositório: `scripts/gtfs.R` é o ponto de entrada, enquanto os dados e as funções reutilizáveis ficam separados em três módulos dentro de `R/`.
+
+O fluxo de execução é:
+
+1. carregar os módulos de dados, roteamento e geração;
+2. montar as tabelas estáticas e as configurações de operação;
+3. criar shapes e tempos de percurso com o Valhalla;
+4. gerar `trips` e `stop_times`;
+5. montar e exportar o feed para `data/processed/buzufba_gtfs.zip`.
+
+O processo depende de um servidor Valhalla acessível em `http://localhost:8002`. Quando o arquivo de shapes manuais existe em `data/raw/shapes_rotas_buzufba.gpkg`, as geometrias desse arquivo são usadas como itinerários. Sem ele, o Valhalla calcula também as geometrias das rotas.
+
+## Organização dos arquivos
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `scripts/gtfs.R` | Carrega os módulos e inicia a geração. |
+| `R/gtfs_data.R` | Define os dados estáticos, sequências circulares e horários das rotas. |
+| `R/gtfs_routing.R` | Integração com Valhalla, tratamento de shapes e cálculo de tempos entre paradas. |
+| `R/gtfs_generator.R` | Verifica dependências, orquestra as etapas, monta o feed e grava o ZIP. |
+| `data/raw/shapes_rotas_buzufba.gpkg` | Shapes manuais opcionais usados como geometrias dos itinerários. |
+| `data/processed/buzufba_gtfs.zip` | Feed GTFS gerado. |
+
+Essa separação deixa os dados operacionais, os cálculos geoespaciais e a montagem do feed em módulos distintos. Para alterar uma sequência ou horário, o ponto principal é `R/gtfs_data.R`; para mudar como os tempos e as geometrias são calculados, consulte `R/gtfs_routing.R`.
+
+## Ponto de entrada
+
+O arquivo executado pelo usuário contém apenas a inicialização do processo. Se for iniciado com `Rscript`, a raiz é obtida a partir do caminho do próprio arquivo. Se o script estiver sendo executado em outro contexto, a função procura no diretório atual e nos diretórios pais até encontrar `buzufba-gtfs.Rproj`.
+
+```{r ponto-de-entrada}
+#| label: ponto-de-entrada
+
+localizar_diretorio_projeto <- function() {
+  argumentos <- commandArgs(trailingOnly = FALSE)
+  argumento_arquivo <- grep("^--file=", argumentos, value = TRUE)
+
+  if (length(argumento_arquivo) > 0) {
+    caminho_script <- normalizePath(sub("^--file=", "", argumento_arquivo[1]),
+      mustWork = TRUE
+    )
+    return(normalizePath(file.path(dirname(caminho_script), ".."), mustWork = TRUE))
+  }
+
+  diretorio <- normalizePath(getwd(), mustWork = TRUE)
+  while (!file.exists(file.path(diretorio, "buzufba-gtfs.Rproj"))) {
+    diretorio_pai <- dirname(diretorio)
+    if (diretorio_pai == diretorio) {
+      stop("Não foi possível localizar a raiz do projeto.", call. = FALSE)
+    }
+    diretorio <- diretorio_pai
+  }
+
+  diretorio
+}
+
+diretorio_projeto <- localizar_diretorio_projeto()
+arquivos_modulos <- file.path(diretorio_projeto, "R", c(
+  "gtfs_data.R", "gtfs_routing.R",
+  "gtfs_generator.R"
+))
+
+for (arquivo_modulo in arquivos_modulos) {
+  if (!file.exists(arquivo_modulo)) {
+    stop(sprintf("Módulo GTFS não encontrado: %s", arquivo_modulo), call. = FALSE)
+  }
+  source(arquivo_modulo, local = FALSE)
+}
+
+gerar_gtfs(diretorio_projeto)
+```
+
+Os módulos são carregados nessa ordem porque as funções de geração usam os dados e utilitários definidos nos módulos anteriores. As dependências de R são verificadas dentro do próprio gerador, sem chamadas a `library()` no ponto de entrada.
+
+Para executar a partir da raiz do repositório:
+
+```{bash}
+Rscript scripts/gtfs.R
+```
+
+## Dados estáticos e operação das linhas
+
+### Tabelas GTFS estáticas
+
+`criar_dados_estaticos_gtfs()`, em `R/gtfs_data.R`, cria as tabelas `agency`, `routes`, `stops` e `calendar`.
+
+Os dados são construídos no código como tibble. Abaixo está um trecho representativo da definição da agência e das rotas; a lista completa de paradas e respectivos dados está em `R/gtfs_data.R`.
+
+```{r dados-estaticos}
+#| label: dados-estaticos
+
+criar_dados_estaticos_gtfs <- function() {
+  agency <- tibble::tibble(
+    agency_id = "UFBA",
+    agency_name = "BUZUFBA - Universidade Federal da Bahia",
+    agency_url = "https://ufba.br/",
+    agency_timezone = "America/Bahia",
+    agency_lang = "pt"
+  )
+
+  routes <- tibble::tibble(
+    route_id = c("B1", "B2", "B3", "B4", "B5"),
+    agency_id = "UFBA",
+    route_short_name = route_id,
+    route_long_name = c(
+      "Ondina - Canela - São Lázaro (Circular)",
+      "Ondina - Canela - Vitória - Graça Longa (Circular)",
+      "Ondina - Garibaldi - Canela - Av. 7 (Circular)",
+      "Ondina - Piedade - Vitória - Graça (Circular)",
+      "Federação - Ondina - Canela - Vitória (Circular)"
+    ),
+    route_type = 3,
+    route_color = "00539F",
+    route_text_color = "FFFFFF"
+  )
+
+  # A função também cria stops e calendar e devolve as quatro tabelas.
+}
+```
+
+### Sequências circulares e horários
+
+A função `criar_configuracoes_rotas()` cadastra, por linha, a sequência ordenada de paradas e os horários de partida. `unir_circular()` concatena os sentidos de ida e volta; quando os dois sentidos compartilham a parada de encontro, ela aparece uma única vez na junção. Os horários são definidos uma vez por rota e separados em três configurações:
+
+1. dias úteis antes do limite noturno;
+2. dias úteis a partir do limite noturno;
+3. sábado, até o limite de operação definido para aquele dia.
+
+Cada linha resultante guarda `route_id`, `service_id`, `direction_id`, o vetor de horários, a sequência de `stop_id` e o `shape_id`. Os identificadores dos shapes diurnos e de sábado seguem o padrão `SHP_<rota>_CIRCULAR`.
+
+Os horários e limites registrados no módulo são:
+
+| Rota | Primeira saída | Início do período noturno em dias úteis | Última saída de sábado |
+|---|---:|---:|---:|
+| B1 | 06:10 | 19:40 | 13:40 |
+| B2 | 06:00 | 19:20 | 14:20 |
+| B3 | 06:30 | 18:10 | 14:40 |
+| B4 | 06:00 | 18:40 | 13:55 |
+| B5 | 06:40 | 17:45 | 14:35 |
+
+O limite noturno é incluído no conjunto noturno. Para sábado, a configuração inclui as saídas desde a primeira até o horário de corte, inclusive.
+
+```{r configuracao-operacional}
+#| label: configuracao-operacional
+
+unir_circular <- function(ida, volta) {
+  c(ida, if (utils::tail(ida, 1) == volta[1]) volta[-1] else volta)
+}
+
+# Exemplo da estrutura de uma configuração de rota:
+tibble::tribble(
+  ~route_id, ~service_id, ~direction_id, ~horarios,
+  ~sequencia_stops, ~shape_id,
+  "B1", "DIAS_UTEIS", 0, horarios_diurnos,
+  sequencia_diurna, "SHP_B1_CIRCULAR"
+)
+```
+
+A opção `noturno_sem_sao_lazaro` controla uma exceção operacional. Seu padrão é `FALSE`, portanto a sequência noturna usa as mesmas paradas da sequência diurna. Quando habilitada, `remover_sao_lazaro()` retira `SAO_LAZARO` e elimina repetições consecutivas que possam surgir após a remoção. Nesse modo, os shapes noturnos recebem o sufixo `_N`.
+
+```{r opcao-noturna}
+#| label: opcao-noturna
+
+remover_sao_lazaro <- function(sequencia) {
+  rle(sequencia[sequencia != "SAO_LAZARO"])$values
+}
+
+sequencia_noturna <- if (noturno_sem_sao_lazaro) {
+  remover_sao_lazaro(sequencia_diurna)
+} else {
+  sequencia_diurna
+}
+```
+
+## Preparar o servidor Valhalla local com Docker
+
+Esta seção descreve uma instalação local para quem ainda não usou Docker. O Valhalla será executado em um container Linux e ficará disponível para o R em `http://localhost:8002`, endereço padrão usado por `gerar_gtfs()`. O guia usa o [Docker Desktop para Windows](https://docs.docker.com/desktop/setup/install/windows-install/) e a [imagem scripted mantida pelo projeto Valhalla](https://github.com/valhalla/valhalla/blob/master/docker/README.md).
+
+### Instalar e iniciar o Docker Desktop
+
+Instale o Docker Desktop, abra o aplicativo e aguarde até ele indicar que o mecanismo Docker está ativo. Para essa imagem, mantenha o modo de **Linux containers** (modo padrão do Docker Desktop). Em um terminal PowerShell, confirme que o cliente conversa com o mecanismo:
+
+```{powershell}
+docker version
+```
+
+O comando deve mostrar as seções `Client` e `Server`. Se só aparecer o cliente ou houver erro de conexão, o Docker Desktop ainda não terminou de iniciar.
+
+### Preparar o arquivo do OpenStreetMap
+
+O Valhalla precisa construir uma rede de roteamento a partir de dados OpenStreetMap em formato `.osm.pbf`. O repositório inclui `data/raw/salvador.osm.pbf`. Copie esse arquivo para uma pasta persistente fora do repositório: o container grava ali os arquivos de configuração e a rede processada, que podem ocupar bastante espaço.
+
+Execute os comandos abaixo no PowerShell, a partir da raiz do repositório:
+
+```{powershell}
+$valhallaData = Join-Path $env:LOCALAPPDATA "buzufba-valhalla"
+New-Item -ItemType Directory -Force -Path $valhallaData | Out-Null
+Copy-Item "data/raw/salvador.osm.pbf" (Join-Path $valhallaData "salvador.osm.pbf") -Force
+```
+
+Se esse arquivo não estiver disponível na sua cópia do projeto, obtenha um recorte OpenStreetMap que cubra Salvador, por exemplo no [servidor de downloads do BBBike para a região de Salvador](https://extract.bbbike.org/), e coloque o `.osm.pbf` dentro de `$valhallaData`. A montagem da rede é feita localmente.
+
+### Criar e iniciar o container
+
+Ainda na raiz do repositório, inicie o container com a porta `8002` publicada no computador. A pasta persistente é montada em `/custom_files` dentro do container, onde a imagem oficial procura os `.osm.pbf` e grava os artefatos gerados.
+
+```{powershell}
+docker run -d --name valhalla -p 8002:8002 --mount "type=bind,source=$valhallaData,target=/custom_files" -e server_threads=4 ghcr.io/valhalla/valhalla-scripted:latest
+```
+
+Na primeira inicialização, o Docker baixa a imagem e o Valhalla prepara os tiles de roteamento a partir do arquivo PBF. Essa etapa pode levar alguns minutos; acompanhe as mensagens com:
+
+```{powershell}
+docker logs -f valhalla
+```
+
+Quando quiser voltar ao terminal, pressione `Ctrl+C`; isso encerra a visualização dos logs, mas deixa o container em execução. Se o container for encerrado durante a construção por falta de recursos, reduza `server_threads` para `2` ao recriá-lo. A documentação da imagem descreve os arquivos persistidos, as opções do container e os casos de reconstrução da rede.
+
+### Confirmar que o endpoint responde
+
+Primeiro confirme que o container está ativo:
+
+```{powershell}
+docker ps --filter "name=valhalla"
+```
+
+Depois envie ao endpoint `/route` uma requisição equivalente à usada pelo gerador. As coordenadas abaixo são as duas primeiras paradas da sequência B1.
+
+```{powershell}
+$body = @{
+  locations = @(
+    @{ lat = -13.004774; lon = -38.512385; type = "break" }
+    @{ lat = -12.999561; lon = -38.511507; type = "break" }
+  )
+  costing = "bus"
+  directions_type = "none"
+  format = "osrm"
+  shape_format = "geojson"
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod -Method Post `
+  -Uri "http://localhost:8002/route" `
+  -ContentType "application/json" `
+  -Body $body | ConvertTo-Json -Depth 10
+```
+
+Uma resposta JSON com rota, geometria e duração indica que o endpoint está respondendo. Se não houver resposta, veja os logs; a rede ainda pode estar sendo construída. Também confirme que a porta `8002` não está sendo usada por outro serviço.
+
+### Usar, parar e reiniciar o servidor
+
+Com o servidor pronto, execute o gerador GTFS em outro terminal, a partir da raiz do projeto:
+
+```{powershell}
+Rscript scripts/gtfs.R
+```
+
+Os comandos para controlar o container são:
+
+```{powershell}
+docker stop valhalla
+docker start valhalla
+docker logs --tail 100 valhalla
+```
+
+O container e os arquivos de rede são coisas separadas: `docker stop` e `docker start` param e reabrem o serviço, preservando os dados em `$valhallaData`. Se o container já existir, use `docker start valhalla` em vez de executar novamente o `docker run`. Para substituir a instalação do container, `docker rm -f valhalla` remove o container, mas mantém a pasta persistente e os tiles nela gravados.
+
+## Roteamento e geração de shapes
+
+### Conexão com o Valhalla
+
+`R/gtfs_routing.R` monta os endereços dos endpoints `/route` e `/trace_route`. As solicitações são enviadas como JSON; respostas HTTP de erro ou falhas de comunicação são tentadas novamente. O padrão é duas tentativas, com pausa de um segundo entre elas.
+
+O perfil de roteamento usado é `bus`. A função `gerar_gtfs()` define por padrão o servidor como `http://localhost:8002`, a margem de parada como 0,5 minuto por trecho e o CRS métrico como EPSG:31984.
+
+### Modo A: shape manual com tempos do Valhalla
+
+Se `data/raw/shapes_rotas_buzufba.gpkg` estiver presente, o gerador o seleciona e usa `carregar_shapes_manuais()`. O arquivo precisa ter uma coluna `shape_id`, não pode repetir identificadores, e as geometrias devem ser linhas contínuas. As geometrias são transformadas para WGS84 (EPSG:4326).
+
+Antes do roteamento, cada linha é segmentizada no CRS métrico (passo padrão de 10 metros). As paradas da configuração são projetadas sobre a linha na ordem da viagem. O algoritmo procura cada parada a até 30 metros do shape; quando não encontra dentro dessa tolerância, usa o vértice mais próximo e emite um aviso.
+
+Para cada trecho entre paradas, `calcular_tempo_trecho()` envia a geometria ao endpoint `/trace_route` com ajuste `map_snap`. Se esse ajuste falha, tenta calcular o tempo do trecho com `/route` entre as coordenadas das duas paradas. Os tempos são convertidos para minutos, arredondados para uma casa decimal e recebem a margem configurada.
+
+Para um shape noturno terminado em `_N`, o gerador procura primeiro uma geometria com esse identificador. Se ela não existir, reutiliza a geometria diurna correspondente, retirando o sufixo `_N`.
+
+### Modo B: shape e tempos gerados pelo Valhalla
+
+Quando o GeoPackage não é encontrado, o endpoint `/route` calcula cada rota completa a partir da sequência de paradas. Cada parada é enviada como ponto de parada obrigatória (`type = "break"`), com `costing = "bus"`. A resposta fornece a geometria e a duração dos trechos entre as paradas.
+
+Em ambos os modos, `gerar_shapes_e_tempos()` elimina combinações repetidas de `shape_id` e sequência antes de consultar o serviço. Assim, configurações que compartilham o mesmo percurso reutilizam os mesmos pontos de shape e offsets de tempo.
+
+O processamento retorna dois produtos ligados pelo `shape_id`:
+
+- `shapes`: pontos ordenados do itinerário, com latitude, longitude e sequência;
+- `tempos`: vetor de minutos acumulados desde a primeira parada, começando em zero.
+
+```{r roteamento}
+#| label: roteamento
+
+shapes_unicos <- dplyr::distinct(
+  configuracoes_rotas, shape_id, sequencia_stops
+)
+
+# Com shapes manuais:
+resultados <- purrr::map2(
+  shapes_unicos$shape_id,
+  shapes_unicos$sequencia_stops,
+  processar_rota_manual,
+  paradas = paradas,
+  shapes_manuais = shapes_manuais,
+  url_trace = urls_valhalla$trace,
+  url_route = urls_valhalla$route,
+  crs_metrico = crs_metrico,
+  margem_parada_min = margem_parada_min
+)
+```
+
+O trecho ilustra a chamada no modo manual; no módulo, a seleção entre os dois modos é feita automaticamente com base na presença do GeoPackage.
+
+## Viagens e horários de parada
+
+`gerar_dados_rota()` cria uma viagem para cada horário de partida da configuração. O `trip_id` combina rota, serviço, o marcador `CIRCULAR` e o horário sem os dois-pontos.
+
+O horário de cada parada é calculado somando o horário inicial, convertido em segundos após meia-noite, ao offset acumulado do shape. O resultado é formatado como `HH:MM:SS`. Neste modelo, chegada e partida são iguais em cada parada. `stop_sequence` começa em 1 e acompanha a ordem da sequência de paradas.
+
+```{r gerar-viagens}
+#| label: gerar-viagens
+
+segundos_iniciais <- as.numeric(substr(horarios, 1, 2)) * 3600 +
+  as.numeric(substr(horarios, 4, 5)) * 60
+
+segundos_totais <- as.integer(round(outer(
+  dicionario_tempos[[shape_id]] * 60,
+  segundos_iniciais,
+  "+"
+)))
+
+horarios_gtfs <- sprintf(
+  "%02d:%02d:%02d",
+  segundos_totais %/% 3600L,
+  (segundos_totais %% 3600L) %/% 60L,
+  segundos_totais %% 60L
+)
+```
+
+Os objetos produzidos por cada configuração são combinados para formar as tabelas `trips` e `stop_times`. A ordenação dos offsets, horários e `stop_id` segue a ordem da sequência configurada.
+
+## Diagnóstico dos tempos
+
+Antes de montar o feed, `criar_diagnostico_tempos()` calcula, por configuração:
+
+- o menor intervalo entre partidas;
+- o número de trechos entre paradas;
+- a duração total estimada do percurso;
+- a estimativa dos tempos do Valhalla sem as margens de parada;
+- a folga entre o intervalo de partidas e a duração do percurso.
+
+O diagnóstico é impresso no console para ajudar a identificar percursos cuja duração estimada se aproxima ou ultrapassa o intervalo entre saídas. Ele é informativo: não substitui um validador formal do GTFS.
+
+```{r diagnostico}
+#| label: diagnostico
+
+diagnostico <- criar_diagnostico_tempos(
+  configuracoes_rotas,
+  dicionario_tempos,
+  margem_parada_min
+)
+
+print(as.data.frame(diagnostico), digits = 4)
+```
+
+## Montagem e exportação do feed
+
+`montar_feed_gtfs()` reúne oito tabelas:
+
+- `agency`, `routes`, `stops` e `calendar`, vindas dos dados estáticos;
+- `trips` e `stop_times`, calculadas a partir das configurações e dos tempos;
+- `shapes`, com as geometrias dos itinerários;
+- `feed_info`, com publicador, idioma, período do feed e versão.
+
+As tabelas são convertidas para `data.table`. O objeto recebe as classes `tidygtfs`, `dt_gtfs` e `gtfs`; as datas em `calendar` e `feed_info` são convertidas para objetos Date antes da exportação.
+
+Por fim, o gerador cria `data/processed/` se necessário e usa `gtfstools::write_gtfs()` para gravar `buzufba_gtfs.zip`. O objeto feed também é devolvido invisivelmente, o que permite capturá-lo ao chamar `gerar_gtfs()` numa sessão interativa.
+
+```{r exportacao}
+#| label: exportacao
+
+diretorio_saida <- file.path(diretorio_projeto, "data", "processed")
+dir.create(diretorio_saida, recursive = TRUE, showWarnings = FALSE)
+
+caminho_saida <- file.path(diretorio_saida, "buzufba_gtfs.zip")
+gtfstools::write_gtfs(feed, caminho_saida)
+
+message("GTFS salvo em '", caminho_saida, "'.")
+```
+
+A versão do feed é montada no código como `UFBA_OSRM_<data>`. Esse texto é o valor atual definido em `feed_version`; o roteamento do gerador, porém, usa Valhalla.
+
+## Dependências e requisitos de execução
+
+Antes de iniciar as etapas, `validar_dependencias_gtfs()` verifica a presença dos pacotes R necessários:
+
+```{r dependencias}
+#| label: dependencias
+
+pacotes <- c(
+  "data.table", "dplyr", "gtfstools", "httr2", "jsonlite", "purrr",
+  "sf", "tibble", "units"
+)
+```
+
+Instale os pacotes ausentes com:
+
+```{r instalar-dependencias}
+#| label: instalar-dependencias
+#| eval: false
+
+install.packages(c(
+  "data.table", "dplyr", "gtfstools", "httr2", "jsonlite",
+  "purrr", "sf", "tibble", "units"
+))
+```
+
+Além dos pacotes, é necessário que o serviço Valhalla esteja ativo e acessível no endereço configurado. O endereço, a margem de parada, o uso da exceção noturna e o CRS podem ser alterados ao chamar `gerar_gtfs()`; o ponto de entrada atual usa os valores padrão dessa função.
+
+```{r parametros-gerador}
+#| label: parametros-gerador
+
+gerar_gtfs <- function(
+  diretorio_projeto,
+  servidor_valhalla = "http://localhost:8002",
+  margem_parada_min = 0.5,
+  noturno_sem_sao_lazaro = FALSE,
+  crs_metrico = 31984
+)
+```
+
+Para consultar a especificação das tabelas e dos campos usados no feed, veja a documentação oficial do [General Transit Feed Specification](https://gtfs.org/).
