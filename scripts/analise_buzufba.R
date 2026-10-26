@@ -107,7 +107,7 @@ max_viagens_transporte <- 1L
 
 # 31 min mantém viagens de exatamente 30 minutos disponíveis para o corte <= 30.
 duracao_max_acessibilidade <- 31L
-duracao_max_espera <- 120L
+duracao_max_fluxos <- 120L
 
 # Os valores à direita devem corresponder exatamente ao campo "name" dos
 # GeoPackages.
@@ -209,7 +209,7 @@ grafico_30 <- criar_grafico_comparacao(
   limite = 30L
 )
 
-# Composição do tempo de espera nos fluxos representativos
+# Tempo total de viagem nos fluxos representativos
 ids_representantes <- criar_ids_representantes(
   cadastro_unidades,
   unidades_representativas
@@ -227,54 +227,55 @@ pontos_fluxos_intervencao <- selecionar_pontos_representativos(
 )
 fluxos_alvo <- criar_fluxos_alvo(ids_representantes)
 
-espera_atual <- calcular_espera_fluxos(
+tempo_total_atual <- calcular_tempo_total_fluxos(
   caminho_rede = caminhos_rede[["Atual"]],
   pontos = pontos_fluxos_atual,
   cenario = "Atual",
   data_hora_saida = data_hora_saida,
   modos = modos,
   max_viagens_transporte = max_viagens_transporte,
-  duracao_max_espera = duracao_max_espera,
+  duracao_max_viagem = duracao_max_fluxos,
   janela_minutos = janela_minutos
 ) |>
   dplyr::rename(
-    percentual_espera_atual = percentual_espera,
+    tempo_total_atual = tempo_total_minutos,
     observacoes_atual = observacoes
   )
 
-espera_intervencao <- calcular_espera_fluxos(
+tempo_total_intervencao <- calcular_tempo_total_fluxos(
   caminho_rede = caminhos_rede[["Intervencao"]],
   pontos = pontos_fluxos_intervencao,
   cenario = "Intervenção",
   data_hora_saida = data_hora_saida,
   modos = modos,
   max_viagens_transporte = max_viagens_transporte,
-  duracao_max_espera = duracao_max_espera,
+  duracao_max_viagem = duracao_max_fluxos,
   janela_minutos = janela_minutos
 ) |>
   dplyr::rename(
-    percentual_espera_intervencao = percentual_espera,
+    tempo_total_intervencao = tempo_total_minutos,
     observacoes_intervencao = observacoes
   )
 
-comparacao_espera <- comparar_espera_fluxos(
+comparacao_tempo_total <- comparar_tempo_total_fluxos(
   fluxos_alvo,
-  espera_atual,
-  espera_intervencao
+  tempo_total_atual,
+  tempo_total_intervencao
 )
-avisar_fluxos_sem_rota(comparacao_espera)
+avisar_fluxos_sem_tempo(comparacao_tempo_total)
 
-subtitulo_espera <- paste0(
+subtitulo_tempo_total <- paste0(
   "Caminhada + transporte público | saída em ",
   format(data_hora_saida, "%d/%m/%Y às %H:%M"),
   " | janela de ", janela_minutos,
-  " min | mediana do percentual por partida"
+  " min | mediana do tempo total por partida"
 )
 
-grafico_espera <- criar_grafico_espera(
-  comparacao_espera = comparacao_espera,
-  subtitulo_espera = subtitulo_espera,
+grafico_tempo_total <- criar_grafico_tempo_total_fluxos(
+  comparacao_tempo_total = comparacao_tempo_total,
+  subtitulo_tempo_total = subtitulo_tempo_total,
   max_viagens_transporte = max_viagens_transporte,
+  duracao_max_viagem = duracao_max_fluxos,
   pasta_figuras = pasta_figuras
 )
 

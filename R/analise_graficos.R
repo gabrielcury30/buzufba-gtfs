@@ -99,18 +99,19 @@ criar_grafico_comparacao <- function(dados,
   grafico
 }
 
-criar_grafico_espera <- function(comparacao_espera,
-                                 subtitulo_espera,
-                                 max_viagens_transporte,
-                                 pasta_figuras) {
-  grafico_espera <- ggplot2::ggplot(
-    comparacao_espera,
+criar_grafico_tempo_total_fluxos <- function(comparacao_tempo_total,
+                                             subtitulo_tempo_total,
+                                             max_viagens_transporte,
+                                             duracao_max_viagem,
+                                             pasta_figuras) {
+  grafico_tempo_total <- ggplot2::ggplot(
+    comparacao_tempo_total,
     ggplot2::aes(y = fluxo_plot)
   ) +
     ggplot2::geom_segment(
       ggplot2::aes(
-        x = percentual_espera_atual,
-        xend = percentual_espera_intervencao,
+        x = tempo_total_atual,
+        xend = tempo_total_intervencao,
         yend = fluxo_plot
       ),
       color = "#C8D0D9",
@@ -118,13 +119,13 @@ criar_grafico_espera <- function(comparacao_espera,
       na.rm = TRUE
     ) +
     ggplot2::geom_point(
-      ggplot2::aes(x = percentual_espera_atual, color = "Cenário atual"),
+      ggplot2::aes(x = tempo_total_atual, color = "Cenário atual"),
       size = 3.2,
       na.rm = TRUE
     ) +
     ggplot2::geom_point(
       ggplot2::aes(
-        x = percentual_espera_intervencao,
+        x = tempo_total_intervencao,
         color = "Intervenção"
       ),
       size = 3.5,
@@ -135,26 +136,26 @@ criar_grafico_espera <- function(comparacao_espera,
       values = c("Cenário atual" = "#9ECAE1", "Intervenção" = "#2171B5")
     ) +
     ggplot2::scale_x_continuous(
-      breaks = seq(0, 100, by = 20),
-      labels = function(x) paste0(x, "%"),
-      limits = c(-5, 105),
-      expand = ggplot2::expansion(mult = c(0, 0))
+      labels = function(x) paste0(x, " min"),
+      limits = c(0, NA),
+      expand = ggplot2::expansion(mult = c(0, 0.06))
     ) +
     ggplot2::scale_y_discrete(drop = FALSE) +
     ggplot2::labs(
-      title = "Parcela do tempo total da viagem dedicada à espera",
-      subtitle = subtitulo_espera,
-      x = "Tempo de espera como percentual do tempo total da viagem",
+      title = "Tempo total da viagem por fluxo: atual vs. intervenção",
+      subtitle = subtitulo_tempo_total,
+      x = "Tempo total da viagem (minutos)",
       y = NULL,
       caption = paste0(
         "Fluxos ida e volta entre Ondina e Engenharia, Canela e Arquitetura. ",
         "\n",
         "PAF 1 representa Ondina; Politécnica representa Engenharia; PAC ",
         "representa Canela; e a unidade selecionada representa Arquitetura.\n",
-        "Cada ponto resume pela mediana as proporções wait_time/total_time ",
-        "das partidas simuladas. \n",
-        "Somente viagens com transporte público (n_rides > 0); máximo de ",
-        "embarques = ", max_viagens_transporte,
+        "Cada ponto resume pela mediana o total_time, em minutos, das rotas ",
+        "mais rápidas por partida.\n",
+        "São consideradas caminhada e transporte público, incluindo viagens ",
+        "só a pé (n_rides = 0); max_rides = ", max_viagens_transporte,
+        "; duração máxima = ", duracao_max_viagem, " min",
         ". Pontos ausentes indicam ausência de viagem elegível no cenário."
       )
     ) +
@@ -181,15 +182,15 @@ criar_grafico_espera <- function(comparacao_espera,
   ggplot2::ggsave(
     filename = file.path(
       pasta_figuras,
-      "grafico_tempo_espera_fluxos_ufba.png"
+      "grafico_tempo_total_viagem_fluxos_ufba.png"
     ),
-    plot = grafico_espera,
-    width = 12,
+    plot = grafico_tempo_total,
+    width = 14,
     height = 7,
     units = "in",
     dpi = 300,
     bg = "white"
   )
 
-  grafico_espera
+  grafico_tempo_total
 }

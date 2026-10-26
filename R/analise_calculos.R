@@ -88,16 +88,16 @@ comparar_indicadores <- function(indicadores_atual, indicadores_intervencao) {
     )
 }
 
-calcular_espera_fluxos <- function(caminho_rede,
-                                   pontos,
-                                   cenario,
-                                   data_hora_saida,
-                                   modos,
-                                   max_viagens_transporte,
-                                   duracao_max_espera,
-                                   janela_minutos) {
+calcular_tempo_total_fluxos <- function(caminho_rede,
+                                        pontos,
+                                        cenario,
+                                        data_hora_saida,
+                                        modos,
+                                        max_viagens_transporte,
+                                        duracao_max_viagem,
+                                        janela_minutos) {
   message(
-    "Calculando composição do tempo de viagem para os fluxos de ",
+    "Calculando tempo total de viagem para os fluxos de ",
     cenario, "..."
   )
 
@@ -116,16 +116,14 @@ calcular_espera_fluxos <- function(caminho_rede,
       departure_datetime = data_hora_saida,
       mode = modos,
       max_rides = max_viagens_transporte,
-      max_trip_duration = duracao_max_espera,
+      max_trip_duration = duracao_max_viagem,
       time_window = janela_minutos,
       breakdown = TRUE,
       verbose = FALSE,
       progress = TRUE
     )
 
-    colunas_necessarias <- c(
-      "from_id", "to_id", "wait_time", "total_time", "n_rides"
-    )
+    colunas_necessarias <- c("from_id", "to_id", "total_time", "n_rides")
 
     if (!all(colunas_necessarias %in% names(ettm))) {
       stop(
@@ -136,53 +134,61 @@ calcular_espera_fluxos <- function(caminho_rede,
       )
     }
 
-    # Resume pela mediana a proporção de espera de cada fluxo.
+    # Resume pela mediana o tempo total de cada fluxo, em minutos.
     ettm |>
       dplyr::filter(
-        !is.na(n_rides), n_rides > 0,
-        is.finite(wait_time), wait_time >= 0,
+        !is.na(n_rides), n_rides >= 0,
         is.finite(total_time), total_time > 0
       ) |>
-      dplyr::mutate(percentual_espera = 100 * wait_time / total_time) |>
-      dplyr::filter(is.finite(percentual_espera)) |>
       dplyr::group_by(from_id, to_id) |>
       dplyr::summarise(
-        percentual_espera = median(percentual_espera, na.rm = TRUE),
+        tempo_total_minutos = median(total_time, na.rm = TRUE),
         observacoes = dplyr::n(),
         .groups = "drop"
       )
   }, finally = r5r::stop_r5(rede))
 }
 
-comparar_espera_fluxos <- function(fluxos_alvo,
-                                   espera_atual,
-                                   espera_intervencao) {
+comparar_tempo_total_fluxos <- function(fluxos_alvo,
+                                        tempo_total_atual,
+                                        tempo_total_intervencao) {
   fluxos_alvo |>
-    dplyr::left_join(espera_atual, by = c("from_id", "to_id")) |>
-    dplyr::left_join(espera_intervencao, by = c("from_id", "to_id")) |>
+    dplyr::left_join(tempo_total_atual, by = c("from_id", "to_id")) |>
+    dplyr::left_join(tempo_total_intervencao, by = c("from_id", "to_id")) |>
     dplyr::mutate(
-      diferenca_espera_pp = round(
-        percentual_espera_intervencao - percentual_espera_atual, 1
+      diferenca_tempo_minutos = round(
+        tempo_total_intervencao - tempo_total_atual, 1
       ),
       fluxo_plot = factor(fluxo, levels = rev(fluxos_alvo$fluxo))
     )
 }
 
-avisar_fluxos_sem_rota <- function(comparacao_espera) {
-  sem_rota <- comparacao_espera |>
-    dplyr::filter(
-      is.na(percentual_espera_atual) |
-        is.na(percentual_espera_intervencao)
-    )
+avisar_fluxos_sem_tempo <- function(comparacao_tempo_total) {
+  fluxos_sem_tempo <- comparacao_tempo_total |>
+    dplyr::mutate(
+      cenarios_sem_tempo = dplyr::case_when(
+        is.na(tempo_total_atual) & is.na(tempo_total_intervencao) ~
+          "Atual e Intervenção",
+        is.na(tempo_total_atual) ~ "Atual",
+        is.na(tempo_total_intervencao) ~ "Intervenção",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    dplyr::filter(!is.na(cenarios_sem_tempo))
 
-  if (nrow(sem_rota) > 0) {
+  if (nrow(fluxos_sem_tempo) > 0) {
+    detalhes <- paste0(
+      fluxos_sem_tempo$fluxo,
+      " (",
+      fluxos_sem_tempo$cenarios_sem_tempo,
+      ")"
+    )
     message(
-      "Atenção: não foi possível calcular a espera em ambos os cenários para: ",
-      paste(sem_rota$fluxo, collapse = "; "),
-      ". Confira se há itinerários de transporte público viáveis ",
-      "na janela selecionada."
+      "Atenção: não foi possível calcular o tempo total para: ",
+      paste(detalhes, collapse = "; "),
+      ". Verifique a conectividade da rede, os pontos e a duração máxima."
     )
   }
 
-  invisible(sem_rota)
+  invisible(fluxos_sem_tempo)
 }
