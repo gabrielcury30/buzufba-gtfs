@@ -126,7 +126,7 @@ O script usa `expanded_travel_time_matrix()` com `breakdown = TRUE` para estimar
 
 ![Acessibilidade em até 30 minutos — B3 e B4 → B1.](../figures/B3eB4-B1_30min.png){#fig-b3b4-b1-30 fig-cap="Acessibilidade em até 30 minutos: cenário atual versus intervenção." width="100%"}
 
-![Tempo de espera nos fluxos direcionais — B3 e B4 → B1.](figuras/B3eB4_vira_B1/grafico_tempo_espera_fluxos_ufba.png){#fig-b3b4-b1-espera fig-cap="Parcela do tempo total dedicada à espera, nos fluxos com observações elegíveis em cada cenário." width="100%"}
+![Tempo total de viagem nos fluxos direcionais — B3 e B4 → B1.](../figures/B3eB4-B1_total.png){#fig-b3b4-b1-total fig-cap="Tempo total de viagem nos fluxos com observações elegíveis em cada cenário." width="100%"}
 
 ## B3 e B4 passam a seguir B2
 
@@ -136,7 +136,7 @@ O script usa `expanded_travel_time_matrix()` com `breakdown = TRUE` para estimar
 
 ![Acessibilidade em até 30 minutos — B3 e B4 → B2.](../figures/B3eB4-B2_30min.png){#fig-b3b4-b2-30 fig-cap="Acessibilidade em até 30 minutos: cenário atual versus intervenção." width="100%"}
 
-![Tempo de espera nos fluxos direcionais — B3 e B4 → B2.](figuras/B3eB4_vira_B2/grafico_tempo_espera_fluxos_ufba.png){#fig-b3b4-b2-espera fig-cap="Parcela do tempo total dedicada à espera, nos fluxos com observações elegíveis em cada cenário." width="100%"}
+![Tempo total de viagem nos fluxos direcionais — B3 e B4 → B2.](../figures/B3eB4-B2_total.png){#fig-b3b4-b2-total fig-cap="Tempo total de viagem nos fluxos com observações elegíveis em cada cenário." width="100%"}
 
 ## B3 e B4 passam a seguir B5
 
@@ -146,7 +146,7 @@ O script usa `expanded_travel_time_matrix()` com `breakdown = TRUE` para estimar
 
 ![Acessibilidade em até 30 minutos — B3 e B4 → B5.](../figures/B3eB4-B5_30min.png){#fig-b3b4-b5-30 fig-cap="Acessibilidade em até 30 minutos: cenário atual versus intervenção." width="100%"}
 
-![Tempo de espera nos fluxos direcionais — B3 e B4 → B5.](figuras/B3eB4_vira_B5/grafico_tempo_espera_fluxos_ufba.png){#fig-b3b4-b5-espera fig-cap="Parcela do tempo total dedicada à espera, nos fluxos com observações elegíveis em cada cenário." width="100%"}
+![Tempo total de viagem nos fluxos direcionais — B3 e B4 → B5.](../figures/B3eB4-B5_total.png){#fig-b3b4-b5-total fig-cap="Tempo total de viagem nos fluxos com observações elegíveis em cada cenário." width="100%"}
 
 ## B3 passa a seguir B2 e B4 passa a seguir B1
 
@@ -156,7 +156,7 @@ O script usa `expanded_travel_time_matrix()` com `breakdown = TRUE` para estimar
 
 ![Acessibilidade em até 30 minutos — B3 → B2 e B4 → B1.](../figures/B3eB4-B1_30min.png){#fig-b3b2-b4b1-30 fig-cap="Acessibilidade em até 30 minutos: cenário atual versus intervenção." width="100%"}
 
-![Tempo de espera nos fluxos direcionais — B3 → B2 e B4 → B1.](figuras/B3viraB2_B4viraB1/grafico_tempo_espera_fluxos_ufba.png){#fig-b3b2-b4b1-espera fig-cap="Parcela do tempo total dedicada à espera, nos fluxos com observações elegíveis em cada cenário." width="100%"}
+![Tempo total de viagem nos fluxos direcionais — B3 → B2 e B4 → B1.](../figures/B3-B2eB4-B1_total.png){#fig-b3b2-b4b1-total fig-cap="Tempo total de viagem nos fluxos com observações elegíveis em cada cenário." width="100%"}
 
 ## B4 passa a seguir B1 e B3 passa a seguir B5
 
@@ -168,7 +168,7 @@ Esta foi a combinação considerada mais promissora no estudo. A leitura dos gr�
 
 ![Acessibilidade em até 30 minutos — B4 → B1 e B3 → B5.](../figures/B4-B1eB3-B5_30min.png){#fig-vencedor-30 fig-cap="Cenário: acessibilidade em até 30 minutos, com o cenário atual em laranja claro e a intervenção em laranja escuro." width="100%"}
 
-![Tempo de espera nos fluxos direcionais — B4 → B1 e B3 → B5.](figuras/B4viraB1_B3viraB5/grafico_tempo_espera_fluxos_ufba.png){#fig-vencedor-espera fig-cap="Cenário prioritário: proporção do tempo total dedicada à espera. A ausência de um ponto indica falta de observações elegíveis para o cenário correspondente, e não espera igual a zero." width="100%"}
+![Tempo total de viagem nos fluxos direcionais — B4 → B1 e B3 → B5.](../figures/B3-B5eB4-B1_total.png){#fig-vencedor-total fig-cap="Cenário prioritário: tempo total de viagem" width="100%"}
 
 ## B4 passa a seguir B2 e B3 passa a seguir B5
 
@@ -178,7 +178,7 @@ Esta foi a combinação considerada mais promissora no estudo. A leitura dos gr�
 
 ![Acessibilidade em até 30 minutos — B4 → B2 e B3 → B5.](../figures/B4-B2eB3-B5_30min.png){#fig-b4b2-b3b5-30 fig-cap="Acessibilidade em até 30 minutos: cenário atual versus intervenção." width="100%"}
 
-![Tempo de espera nos fluxos direcionais — B4 → B2 e B3 → B5.](figuras/B4viraB2_B3viraB5/grafico_tempo_espera_fluxos_ufba.png){#fig-b4b2-b3b5-espera fig-cap="Parcela do tempo total dedicada à espera, nos fluxos com observações elegíveis em cada cenário." width="100%"}
+![Tempo total de viagem nos fluxos direcionais — B4 → B2 e B3 → B5.](../figures/B3-B5eB4-B2_total.png){#fig-b4b2-b3b5-total fig-cap="Tempo total de viagem nos fluxos com observações elegíveis em cada cenário." width="100%"}
 
 # Discussão
 
