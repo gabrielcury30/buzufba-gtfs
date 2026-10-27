@@ -1,169 +1,212 @@
-# 🚌 BUZUFBA GTFS & Multimodal Accessibility Pipeline
+# BUZUFBA GTFS e acessibilidade multimodal
 
-> **Geração programática de dados GTFS e análise de acessibilidade de transporte ativo e coletivo para a Universidade Federal da Bahia (UFBA).**
+Pipeline em R para representar o sistema de ônibus da Universidade Federal da Bahia (BUZUFBA) em formato GTFS e estudar como o transporte coletivo e a caminhada conectam as unidades da UFBA em Salvador. O projeto automatiza a preparação dos horários e itinerários, produz uma animação das viagens e permite comparar cenários de acessibilidade para apoiar análises de mobilidade no campus.
 
----
+[![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)](#status-do-projeto) [![R](https://img.shields.io/badge/R-4.1%2B-276DC3)](https://www.r-project.org/) [![GTFS](https://img.shields.io/badge/formato-GTFS-2E8B57)](https://gtfs.org/) [![Licença MIT](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
 
-[![R-Version](https://img.shields.io/badge/R-%24%3E%3D%204.0-blue.svg)](https://www.r-project.org/)
-[![GTFS-Standard](https://img.shields.io/badge/GTFS-v2.0-brightgreen.svg)](https://gtfs.org/)
-[![Dependency-R5R](https://img.shields.io/badge/Engine-r5r%20%2F%20R5-orange.svg)](https://github.com/ipeaGIT/r5r)
-[![License-MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<div align="center">
+  <figure>
+    <img src="./assets/animacao_buzufba.gif" alt="Operação do Buzufba em um Dia Típico">
+    <figcaption>Operação do Buzufba em um Dia Típico</figcaption>
+  </figure>
+</div>
 
-Este repositório hospeda um pipeline completo de Engenharia de Dados de Transporte e Planejamento Urbano. Ele foi desenvolvido para mapear programaticamente o **BUZUFBA** (sistema de transporte interno da UFBA), gerar um feed padronizado **GTFS**, construir uma rede de transporte multimodal e realizar simulações e análises espaciais de acessibilidade urbana aos campi da universidade.
+## Índice
 
----
+- [Status do projeto](#status-do-projeto)
+- [Funcionalidades](#funcionalidades)
+- [Tecnologias](#tecnologias)
+- [Estrutura do repositório](#estrutura-do-repositório)
+- [Pré-requisitos e instalação](#pré-requisitos-e-instalação)
+- [Como usar](#como-usar)
+- [Relatórios](#relatórios)
+- [Licença](#licença)
+- [Autoria e contribuição](#autoria-e-contribuição)
 
-## 📌 Índice
-- [1. Sobre o BUZUFBA](#sobre)
-- [2. Rotas Operacionais](#rotas)
-- [3. Arquitetura do Repositório](#arquitetura)
-- [4. Requisitos de Infraestrutura & Software](#requisitos)
-- [5. Como Utilizar o Pipeline](#como-utilizar)
-  - [Etapa 1: Geração de GTFS](#etapa-1-geração-de-gtfs)
-  - [Etapa 2: Análise de Acessibilidade Espacial](#etapa-2-análise-de-acessibilidade-espacial)
-  - [Etapa 3: Animação e Simulação Dinâmica](#etapa-3-animação-e-simulação-dinâmica)
-- [6. Como Contribuir](#como-contribuir)
-- [7. Licença](#licenca)
+## Status do projeto
 
----
+**Em desenvolvimento.** O repositório contém os fluxos de geração GTFS, animação e comparação de cenários. Os resultados dependem dos dados de entrada e dos serviços locais descritos abaixo.
 
-<a id="sobre"></a>
+## Funcionalidades
 
-## 🚌 1. Sobre o BUZUFBA
+- Gera um feed GTFS para as linhas B1 a B5, incluindo paradas, viagens, horários, calendário de operação e shapes.
+- Usa shapes manuais em GeoPackage quando disponíveis e consulta o Valhalla para calcular tempos entre paradas; sem shapes manuais, também solicita ao Valhalla a geometria das rotas.
+- Cria uma [animação HTML interativa](https://gabrielcury30.github.io/buzufba-gtfs/) das viagens do feed, com linha do tempo, paradas, itinerários e edificações da UFBA.
+- Compara os cenários atual e de intervenção com o R5: calcula a proporção de outras unidades alcançáveis em até 15 e 30 minutos e tempos totais para fluxos representativos.
+- Produz gráficos PNG para os indicadores calculados.
+- Mantém relatórios Quarto sobre a geração do GTFS e a análise de acessibilidade.
 
-O **BUZUFBA** é o sistema de transporte coletivo e gratuito que atende a comunidade acadêmica da Universidade Federal da Bahia em Salvador-BA. Ele atua como um elemento crucial de permanência estudantil e integração urbana, conectando faculdades, institutos de pesquisa, residências universitárias e pontos estratégicos de transporte da cidade ao longo de 5 rotas circulares operadas durante os dias úteis e sábados.
+## Tecnologias
 
----
+- **R (4.1 ou superior)** para os scripts e funções do projeto.
 
-<a id="rotas"></a>
+- **GTFS** como formato de dados de transporte público.
 
-## 🗺️ 2. Rotas Operacionais
+- **Valhalla** como serviço de roteamento usado na geração do feed.
 
-O sistema é modelado com base nas seguintes linhas circulares principais:
+- **R5 via pacote `r5r`** para matrizes de tempo de viagem e análise multimodal. O `r5r` requer **Java JDK 21**; consulte a [documentação oficial do r5r](https://github.com/ipeaGIT/r5r#installation).
 
-| Rota | Nome do Itinerário | Descrição / Conexões Chave |
-| :---: | :--- | :--- |
-| **B1** | Ondina - Canela - São Lázaro | Conecta o Campus de Ondina ao Canela e ao topo da colina de São Lázaro (FFCH). |
-| **B2** | Ondina - Canela - Vitória - Graça | Atende a reitoria, corredor da Vitória, Graça e o vale do Canela. |
-| **B3** | Ondina - Garibaldi - Canela - Av. 7 de Setembro | Rota expressa ligando Ondina ao Canela via Av. Garibaldi. |
-| **B4** | Ondina - Piedade - Vitória - Graça | Rota que passa pela Piedade para atender à Faculdade de Economia. |
-| **B5** | Federação - Ondina - Canela - Vitória | Conecta o campus da Federação (Engenharia/Arquitetura) a Ondina e Canela. |
+- **Docker** pode ser usado para executar o Valhalla localmente.
 
----
+- Pacotes R principais: `data.table`, `dplyr`, `ggplot2`, `gtfstools`, `httr2`, `jsonlite`, `purrr`, `sf`, `tibble`, `units`, `r5r`, `geojsonio`, `htmlwidgets`, `leaflet`, `leaftime`, `stinepack` e `tidytransit`.
 
-<a id="arquitetura"></a>
+- **Quarto** é opcional e necessário apenas para renderizar os relatórios `.qmd`.
 
-## 📂 3. Arquitetura do Repositório
+## Estrutura do repositório
 
-O projeto é estruturado de forma lógica para separar dados brutos, modelos gerados e scripts executáveis:
-
-```text
-buzufba-gtfs/
-├── R/                                  # Funções reutilizáveis do pipeline GTFS
-├── scripts/                            # Pontos de entrada executáveis
-├── analysis/                           # Relatórios e documentação Quarto
+``` text
+.
+├── R/                    # Funções de geração, roteamento, animação e análise
+├── scripts/              # Pontos de entrada executáveis
+├── analysis/             # Relatórios Quarto (.qmd)
 ├── data/
-│   ├── raw/                            # Insumos geoespaciais versionados
-│   └── processed/                      # Saídas regeneráveis, não versionadas
-├── img/                                # Figuras de análises
-├── buzufba-gtfs.Rproj
+│   ├── raw/              # Insumos geoespaciais
+│   └── processed/        # GTFS, redes R5 e HTML gerados (não versionados)
+├── figures/              # Gráficos gerados pela análise (não versionados)
+├── LICENSE
 └── README.md
 ```
 
----
+Principais insumos em `data/raw/`:
 
-<a id="requisitos"></a>
+- `shapes_rotas_buzufba.gpkg`: geometrias manuais dos itinerários, usadas quando disponíveis.
+- `salvador.osm.pbf` e `salvador_mde.tif`: rede viária e elevação usadas na análise R5.
+- `edificacoes_ufba.gpkg` e `intervencoes_edificacoes_ufba.gpkg`: edificações/unidades nos cenários atual e de intervenção.
 
-## 🛠️ 4. Requisitos de Infraestrutura & Software
+`data/processed/` recebe artefatos regeneráveis; os GTFS, HTML e redes R5 gerados são ignorados pelo Git. A pasta `figures/` também é ignorada. Para informações detalhadas sobre a configuração do Valhalla, consulte [analysis/relatorio_gtfs.qmd](analysis/relatorio_gtfs.qmd).
 
-Devido à integração com o **R5** (uma engine de roteamento de alto desempenho escrita em Java), os requisitos deste repositório vão além das bibliotecas tradicionais de R:
+## Pré-requisitos e instalação
 
-### Requisitos do Sistema
-1. **Java Development Kit (JDK) 11 ou 21:** Necessário para o funcionamento do motor de roteamento multimodal `r5r`. Certifique-se de que a variável de ambiente `JAVA_HOME` está devidamente configurada.
-2. **Valhalla local:** Necessário para calcular tempos de viagem; o gerador consulta `http://localhost:8002`.
+### Requisitos
 
-### Instalação de Pacotes R
+- Git e R 4.1 ou superior.
+- Java JDK 21 para executar a análise com `r5r`.
+- Um serviço Valhalla acessível em `http://localhost:8002` para gerar o GTFS. O relatório [relatorio_gtfs.qmd](analysis/relatorio_gtfs.qmd) descreve como subir o serviço local usando Docker.
+- Quarto, somente se for renderizar os relatórios.
 
-Abra o console do R e execute as instruções abaixo de acordo com sua necessidade:
+### Clonar o projeto
 
-#### Dependências de Geração do GTFS (`scripts/gtfs.R`)
-```r
-install.packages(c("data.table", "dplyr", "gtfstools", "httr2", "jsonlite", "purrr", "sf", "tibble", "units"))
+Execute na pasta em que deseja salvar o repositório:
+
+``` sh
+git clone https://github.com/gabrielcury30/buzufba-gtfs.git
+cd buzufba-gtfs
 ```
 
-#### Dependências de Roteamento e Acessibilidade (`src/R/analise/analise_acessibilidade.R`)
-```r
-install.packages(c("r5r", "sf", "dplyr", "ggplot2", "ggspatial", "viridis", "r5rgui", "tidyr", "scales", "forcats"))
+### Instalar os pacotes R
+
+Instale no R os pacotes necessários para os fluxos que pretende executar:
+
+``` r
+# Geração do GTFS
+install.packages(c(
+  "data.table", "dplyr", "gtfstools", "httr2", "jsonlite",
+  "purrr", "sf", "tibble", "units"
+))
+
+# Animação
+install.packages(c(
+  "dplyr", "geojsonio", "htmlwidgets", "leaflet", "leaftime",
+  "sf", "stinepack", "tidytransit"
+))
+
+# Análise de acessibilidade
+install.packages(c("dplyr", "ggplot2", "r5r", "sf"))
 ```
 
-#### Dependências de Animação e Simulação (`src/R/animacao/animacao_buzufba.R`)
-```r
-install.packages(c("tidytransit", "dplyr", "lubridate", "leaflet", "leaftime", "geojsonio", "htmlwidgets", "stinepack", "sf"))
+Para instalar o JDK 21 com `rJavaEnv`, uma opção mantida para uso com R:
+
+``` r
+install.packages("rJavaEnv")
+rJavaEnv::java_quick_install(version = 21)
+rJavaEnv::java_check_version_rjava()
 ```
 
----
+A geração do GTFS exige que o Valhalla esteja em execução antes de chamar o script. O projeto inclui `data/raw/salvador.osm.pbf`; o relatório Quarto acima traz os passos para iniciar o Valhalla com Docker e preparar esse arquivo.
 
-<a id="como-utilizar"></a>
+## Como usar
 
-## ⚙️ 5. Como Utilizar o Pipeline
+Execute os comandos a partir da raiz do repositório.
 
-O pipeline foi desenhado para ser executado de forma sequencial, onde cada etapa gera insumos para a subsequente.
+### 1. Gerar o feed GTFS
 
-```mermaid
-graph TD
-    A[scripts/gtfs.R] -->|Gera buzufba_gtfs.zip| B[data/processed/]
-    B -->|Copiado para r5r| C[scripts/analise_comparacao_cenarios_ufba.R]
-    B -->|Lido pelo simulador| D[scripts/animacao_buzufba.R]
-    C -->|Gera matriz de tempos| E[Avaliação de Acessibilidade Espacial]
-    D -->|Gera simulação| F[HTML Animado e Interativo de Operação]
-```
+Com o Valhalla respondendo em `http://localhost:8002`:
 
-### Etapa 1: Geração de GTFS
-O script `scripts/gtfs.R` monta as tabelas do padrão GTFS (`agency`, `routes`, `stops`, `trips`, `stop_times`, `calendar`, `shapes` e `feed_info`). As funções ficam em `R/`, os shapes manuais são lidos de `data/raw/shapes_rotas_buzufba.gpkg`, e o Valhalla local calcula os tempos de percurso.
-
-```powershell
+``` sh
 Rscript scripts/gtfs.R
 ```
-*Insumo Gerado:* `data/processed/buzufba_gtfs.zip` (regenerável e ignorado pelo Git).
-*Documentação do Script:* O script em R do GTFS foi documentado e pode ser acessado através do [link](https://01a08be6-dcfd-7112-31db-cec7d0804ee0.share.connect.posit.cloud/).
 
-### Etapa 2: Análise de Acessibilidade Espacial
-Usando o motor `r5r` acoplado ao modelo de elevação digital (`salvador_mde.tif`), ao OpenStreetMap (`ufba.pbf`) e ao nosso GTFS recém-gerado, este script calcula as curvas de tempo de viagem de pedestres saindo de todas as unidades acadêmicas (`edif_ufba.gpkg`) para os pontos do BUZUFBA, levando em conta o relevo acidentado de Salvador.
+O feed será gravado em `data/processed/buzufba_gtfs.zip`. Se `data/raw/shapes_rotas_buzufba.gpkg` existir, o script usa essas geometrias e calcula os tempos com o Valhalla; se não existir, o Valhalla também calcula os shapes.
 
-```r
-source("src/R/analise/analise_acessibilidade.R")
+### 2. Gerar a animação
+
+Depois de gerar o feed, execute:
+
+``` sh
+Rscript scripts/buzufba_animation.R
 ```
-*Insumo Gerado:* Matrizes de tempo de viagem e relatórios de acessibilidade espacial integrados.
 
-### Etapa 3: Animação e Simulação Dinâmica
-O script `scripts/animacao_buzufba.R` converte o feed GTFS em coordenadas espaço-temporais usando interpolação e renderiza um mapa animado. As funções de preparação e interpolação ficam em `R/animacao_funcoes.R`.
+O script também requer `data/raw/edificacoes_ufba.gpkg`. O arquivo `data/processed/animacao_buzufba.html` resultante pode ser aberto em um navegador. A visualização inclui controles de tempo e camadas para rotas, paradas e edificações.
 
-```r
-Rscript scripts/animacao_buzufba.R
+### 3. Comparar acessibilidade entre cenários
+
+Prepare estas pastas antes de executar:
+
+- `data/processed/r5r/`: exatamente um arquivo de rede viária `.pbf`, ao menos um feed GTFS `.zip` e, opcionalmente, um arquivo de elevação `.tif`.
+- `data/processed/r5r_intervencao/`: a mesma estrutura, com o GTFS do cenário de intervenção.
+- Os GeoPackages dos dois cenários ficam em `data/raw/` e são selecionados pelo script.
+
+O repositório fornece a rede e a elevação em `data/raw/`. Depois de gerar o GTFS base e obter um ZIP GTFS com o serviço de intervenção, prepare as pastas (substitua o caminho de exemplo pelo arquivo GTFS de intervenção):
+
+``` powershell
+New-Item -ItemType Directory -Force data/processed/r5r, data/processed/r5r_intervencao
+Copy-Item data/raw/salvador.osm.pbf, data/raw/salvador_mde.tif data/processed/r5r/
+Copy-Item data/raw/salvador.osm.pbf, data/raw/salvador_mde.tif data/processed/r5r_intervencao/
+Copy-Item data/processed/buzufba_gtfs.zip data/processed/r5r/
+Copy-Item C:/caminho/para/gtfs_intervencao.zip data/processed/r5r_intervencao/
 ```
-*Insumo Gerado:* `data/processed/animacao_buzufba.html`. O feed GTFS deve estar em `data/processed/buzufba_gtfs.zip`.
 
----
+O script compara os dados presentes nessas pastas; ele não cria automaticamente o GTFS de intervenção nem executa todos os seis cenários do relatório. Em seguida, execute:
 
-<a id="como-contribuir"></a>
+``` sh
+Rscript scripts/analise_buzufba.R
+```
 
-## 🤝 6. Como Contribuir
+O script compara o cenário atual com o cenário de intervenção configurado e salva em `figures/`:
 
-Ficamos muito felizes com o seu interesse em melhorar o projeto! Para contribuir:
+- `grafico_acessibilidade_15min.png`
+- `grafico_acessibilidade_30min.png`
+- `grafico_tempo_total_viagem_fluxos_ufba.png`
 
-1. Faça um **Fork** deste repositório.
-2. Crie uma branch para sua modificação: `git checkout -b feature/minha-melhoria`.
-3. Certifique-se de que suas modificações não quebraram os scripts de teste e geração de dados.
-4. Envie um **Pull Request**.
+As redes R5 são construídas/reutilizadas dentro dessas pastas de cenário. A primeira execução pode levar mais tempo. A data e o horário da partida, os parâmetros de viagem e as unidades representativas podem ser alterados no início de `scripts/analise_buzufba.R`.
 
----
+## Relatórios
 
-<a id="licenca"></a>
+Os arquivos-fonte Quarto ficam em `analysis/`. Para renderizar o relatório de geração do GTFS:
 
-## 📝 7. Licença
+``` sh
+quarto render analysis/relatorio_gtfs.qmd
+```
 
-Este projeto é disponibilizado sob a Licença **MIT**. Sinta-se livre para adaptar, redistribuir e aplicar estes dados e rotinas para pesquisas e planejamentos urbanos adicionais.
+O relatório de análise (`analysis/relatorio_analise.qmd`) documenta o estudo de seis combinações de itinerários e referencia figuras de cenário. Essas figuras precisam estar disponíveis em `figures/` para que o relatório seja renderizado com todos os gráficos.
 
----
+Os relatórios de análise e construção do GTFS foram publicados e podem ser acessados através dos links:
 
-*Desenvolvido e mantido com foco em reprodutibilidade científica e mobilidade ativa.*
+- [Relatório da construção do GTFS](https://gabrielcury30-relatorio-gtfs.share.connect.posit.cloud/).
+
+- [Relatório da Análise](https://gabrielcury30-relatorio-analise.share.connect.posit.cloud/).
+
+## Licença
+
+O código deste projeto é distribuído sob a licença [MIT](LICENSE). A licença dos dados geográficos pode depender de suas fontes e não deve ser presumida como MIT.
+
+## Autoria e contribuição
+
+Desenvolvido por [Gabriel Amazonas Cury](https://github.com/gabrielcury30).
+
+Contribuições são bem-vindas:
+
+1.  Abra uma *issue* para discutir mudanças maiores ou relatar um problema.
+2.  Faça um fork e crie uma branch para sua alteração.
+3.  Descreva no *pull request* o objetivo da mudança e os arquivos afetados.
+4.  Para alterações nos scripts, informe quais entradas e comandos foram usados na verificação; não inclua dados grandes ou artefatos gerados sem necessidade.
