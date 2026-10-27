@@ -4,7 +4,10 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 
 [![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)](#status-do-projeto) [![R](https://img.shields.io/badge/R-4.1%2B-276DC3)](https://www.r-project.org/) [![GTFS](https://img.shields.io/badge/formato-GTFS-2E8B57)](https://gtfs.org/) [![Licença MIT](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
 
-![Operação do Buzufba em um Dia Típico](./assets/animacao_buzufba.gif)
+<figure>
+  <img src="./assets/animacao_buzufba.gif" alt="Operação do Buzufba em um Dia Típico">
+  <figcaption>Operação do Buzufba em um Dia Típico</figcaption>
+</figure>
 
 ## Índice
 
