@@ -13,15 +13,15 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 
 ## 📑 Índice
 
-- [Status do projeto](#status-do-projeto)
-- [Funcionalidades](#funcionalidades)
-- [Tecnologias](#tecnologias)
-- [Estrutura do repositório](#estrutura-do-repositório)
-- [Pré-requisitos e instalação](#pré-requisitos-e-instalação)
-- [Como usar](#como-usar)
-- [Relatórios](#relatórios)
-- [Licença](#licença)
-- [Contribuição](#contribuição)
+- [Status do projeto](#-status-do-projeto)
+- [Funcionalidades](#-funcionalidades)
+- [Tecnologias](#-tecnologias)
+- [Estrutura do repositório](#-estrutura-do-repositório)
+- [Pré-requisitos e instalação](#-pré-requisitos-e-instalação)
+- [Como usar](#-como-usar)
+- [Relatórios](#-relatórios)
+- [Licença](#-licença)
+- [Contribuição](#-contribuição)
 
 ## 🚧 Status do projeto
 
