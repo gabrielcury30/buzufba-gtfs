@@ -21,7 +21,7 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 - [Como usar](#como-usar)
 - [Relatórios](#relatórios)
 - [Licença](#licença)
-- [Autoria e contribuição](#autoria-e-contribuição)
+- [Contribuição](#contribuição)
 
 ## Status do projeto
 
@@ -200,9 +200,7 @@ Os relatórios de análise e construção do GTFS foram publicados e podem ser a
 
 O código deste projeto é distribuído sob a licença [MIT](LICENSE). A licença dos dados geográficos pode depender de suas fontes e não deve ser presumida como MIT.
 
-## Autoria e contribuição
-
-Desenvolvido por [Gabriel Amazonas Cury](https://github.com/gabrielcury30).
+## Contribuição
 
 Contribuições são bem-vindas:
 
