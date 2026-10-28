@@ -4,15 +4,12 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 
 [![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)](#status-do-projeto) [![R](https://img.shields.io/badge/R-4.1%2B-276DC3)](https://www.r-project.org/) [![GTFS](https://img.shields.io/badge/formato-GTFS-2E8B57)](https://gtfs.org/) [![Licença MIT](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
 
-::: {align="center"}
-<figure>
-
-<img src="./assets/animacao_buzufba.gif" alt="Operação do Buzufba em um Dia Típico"/>
-
-<figcaption>Operação do Buzufba em um Dia Típico</figcaption>
-
-</figure>
-:::
+<div align="center">
+  <figure>
+    <img src="./assets/animacao_buzufba.gif" alt="Operação do Buzufba em um Dia Típico">
+    <figcaption>Operação do Buzufba em um Dia Típico</figcaption>
+  </figure>
+</div>
 
 ## 📑 Índice
 
@@ -26,11 +23,11 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 - [Licença](#licença)
 - [Contribuição](#contribuição)
 
-## 🚧 Status do projeto {#status-do-projeto}
+## 🚧 Status do projeto
 
 **Em desenvolvimento.** O repositório contém os fluxos de geração GTFS, animação e comparação de cenários. Os resultados dependem dos dados de entrada e dos serviços locais descritos abaixo.
 
-## ⚙️ Funcionalidades {#funcionalidades}
+## ⚙️ Funcionalidades
 
 - Gera um feed GTFS para as linhas B1 a B5, incluindo paradas, viagens, horários, calendário de operação e shapes.
 - Usa shapes manuais em GeoPackage quando disponíveis e consulta o Valhalla para calcular tempos entre paradas; sem shapes manuais, também solicita ao Valhalla a geometria das rotas.
@@ -39,7 +36,7 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 - Produz gráficos PNG para os indicadores calculados.
 - Mantém relatórios Quarto sobre a geração do GTFS e a análise de acessibilidade.
 
-## 💻 Tecnologias {#tecnologias}
+## 💻 Tecnologias
 
 - **R (4.1 ou superior)** para os scripts e funções do projeto.
 
@@ -55,7 +52,7 @@ Pipeline em R para representar o sistema de ônibus da Universidade Federal da B
 
 - **Quarto** é opcional e necessário apenas para renderizar os relatórios `.qmd`.
 
-## 📁 Estrutura do repositório {#estrutura-do-repositório}
+## 📁 Estrutura do repositório
 
 ``` text
 .
@@ -78,7 +75,7 @@ Principais insumos em `data/raw/`:
 
 `data/processed/` recebe artefatos regeneráveis; os GTFS, HTML e redes R5 gerados são ignorados pelo Git. A pasta `figures/` também é ignorada. Para informações detalhadas sobre a configuração do Valhalla, consulte [analysis/relatorio_gtfs.qmd](analysis/relatorio_gtfs.qmd).
 
-## 🛠️ Pré-requisitos e instalação {#pré-requisitos-e-instalação}
+## 🛠️ Pré-requisitos e instalação 
 
 ### Requisitos
 
@@ -127,7 +124,7 @@ rJavaEnv::java_check_version_rjava()
 
 A geração do GTFS exige que o Valhalla esteja em execução antes de chamar o script. O projeto inclui `data/raw/salvador.osm.pbf`; o relatório Quarto acima traz os passos para iniciar o Valhalla com Docker e preparar esse arquivo.
 
-## ▶️ Como usar {#como-usar}
+## ▶️ Como usar
 
 Execute os comandos a partir da raiz do repositório.
 
@@ -183,7 +180,7 @@ O script compara o cenário atual com o cenário de intervenção configurado e 
 
 As redes R5 são construídas/reutilizadas dentro dessas pastas de cenário. A primeira execução pode levar mais tempo. A data e o horário da partida, os parâmetros de viagem e as unidades representativas podem ser alterados no início de `scripts/analise_buzufba.R`.
 
-## 📊 Relatórios {#relatórios}
+## 📊 Relatórios
 
 Os arquivos-fonte Quarto ficam em `analysis/`. Para renderizar o relatório de geração do GTFS:
 
@@ -199,11 +196,11 @@ Os relatórios de análise e construção do GTFS foram publicados e podem ser a
 
 - [Relatório da Análise](https://gabrielcury30-relatorio-analise.share.connect.posit.cloud/).
 
-## ⚖️ Licença {#licença}
+## ⚖️ Licença
 
 O código deste projeto é distribuído sob a licença [MIT](LICENSE). A licença dos dados geográficos pode depender de suas fontes e não deve ser presumida como MIT.
 
-## 🤝 Contribuição {#contribuição}
+## 🤝 Contribuição
 
 Contribuições são bem-vindas:
 
