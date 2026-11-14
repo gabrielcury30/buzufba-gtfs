@@ -1,7 +1,9 @@
 # Orquestração da geração e exportação do feed GTFS BUZUFBA.
 
 encontrar_shapes_manuais <- function(diretorio_projeto) {
-  candidatos <- file.path(diretorio_projeto, c("data/raw/shapes_rotas_buzufba.gpkg"))
+  # candidatos <- file.path(diretorio_projeto, c("data/raw/shapes_rotas_buzufba.gpkg"))
+  candidatos <- file.path(diretorio_projeto, 
+                          c("data/raw/shapes_rotas_buzufba_intervencao.gpkg"))
   encontrados <- candidatos[file.exists(candidatos)]
   if (length(encontrados) == 0) {
     return(NULL)
@@ -174,7 +176,7 @@ gerar_gtfs <- function(
   )), data.table::rbindlist(purrr::map(trabalhos, "stop_times")), resultados$shapes)
   diretorio_saida <- file.path(diretorio_projeto, "data", "processed")
   dir.create(diretorio_saida, recursive = TRUE, showWarnings = FALSE)
-  caminho_saida <- file.path(diretorio_saida, "buzufba_gtfs.zip")
+  caminho_saida <- file.path(diretorio_saida, "buzufba_gtfs_intervencao.zip")
   gtfstools::write_gtfs(feed, caminho_saida)
   message("GTFS salvo em '", caminho_saida, "'.")
   invisible(feed)
