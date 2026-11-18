@@ -118,44 +118,44 @@ criar_configuracoes_rotas <- function(noturno_sem_sao_lazaro = FALSE) {
     "ODONTO", "REITORIA", "CRECHE", "POLITECNICA", "SAO_LAZARO", "POLITECNICA_VOLTA",
     "ARQUITETURA", "RESIDENCIA5", "GEOCIENCIAS", "PAF1_MAT"
   )),
-  B3 = unir_circular(c(
-    "GEOCIENCIAS_INTERNO",
-    "FACOM", "PORTARIA", "CENTRO_ESPORTES", "PAF1_B1", "GARIBALDI", "PROAE",
-    "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA", "POLITECNICA", "CRECHE",
-    "REITORIA_2"
-  ), 
-  c(
-    "RESIDENCIA1", "DIREITO_B5", "ISC_CANELA", "ODONTO", "REITORIA",
-    "CRECHE", "POLITECNICA", "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA",
-    "ARQUITETURA", "GEOCIENCIAS", "PAF1_B1", "PORTARIA", "FACOM", "GEOCIENCIAS_INTERNO"
-  )),
   # B3 = unir_circular(c(
-  #   "PAF1_MAT",
-  #   "GARIBALDI", "CANELA_ICS", "AV_7", "BELAS_ARTES"
+  #   "GEOCIENCIAS_INTERNO",
+  #   "FACOM", "PORTARIA", "CENTRO_ESPORTES", "PAF1_B1", "GARIBALDI", "PROAE",
+  #   "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA", "POLITECNICA", "CRECHE",
+  #   "REITORIA_2"
+  # ), 
+  # c(
+  #   "RESIDENCIA1", "DIREITO_B5", "ISC_CANELA", "ODONTO", "REITORIA",
+  #   "CRECHE", "POLITECNICA", "POLITECNICA_VOLTA", "SAO_LAZARO", "POLITECNICA_VOLTA",
+  #   "ARQUITETURA", "GEOCIENCIAS", "PAF1_B1", "PORTARIA", "FACOM", "GEOCIENCIAS_INTERNO"
+  # )),
+  B3 = unir_circular(c(
+    "PAF1_MAT",
+    "GARIBALDI", "CANELA_ICS", "AV_7", "BELAS_ARTES"
+  ),
+  c(
+    "REITORIA", "CRECHE",
+    "POLITECNICA", "ARQUITETURA", "GEOCIENCIAS", "PAF1_MAT"
+  )),
+  # B4 = unir_circular(c(
+  #   "SAO_LAZARO", "POLITECNICA_VOLTA", "ARQUITETURA",
+  #   "RESIDENCIA5", "CANELA_ICS", "ISC_CANELA", "ODONTO"
   # ), 
   # c(
   #   "REITORIA", "CRECHE",
-  #   "POLITECNICA", "ARQUITETURA", "GEOCIENCIAS", "PAF1_MAT"
+  #   "GRACA_R2", "DIREITO", "FACED", "PAF1_B1", "PROAE", "POLITECNICA_VOLTA",
+  #   "SAO_LAZARO"
   # )),
-  B4 = unir_circular(c(
-    "SAO_LAZARO", "POLITECNICA_VOLTA", "ARQUITETURA",
-    "RESIDENCIA5", "CANELA_ICS", "ISC_CANELA", "ODONTO"
-  ), 
-  c(
-    "REITORIA", "CRECHE",
-    "GRACA_R2", "DIREITO", "FACED", "PAF1_B1", "PROAE", "POLITECNICA_VOLTA",
-    "SAO_LAZARO"
-  )),
-  # B4 = unir_circular(
-  #   c(
-  #     "PAF1_MAT",
-  #     "GARIBALDI", "PROAE", "POLITECNICA", "CRECHE", "REITORIA_2", "ECONOMIA"
-  #   ),
-  #   c(
-  #     "RESIDENCIA1", "GRACA_R2", "POLITECNICA_VOLTA", "SAO_LAZARO", "ARQUITETURA",
-  #     "GEOCIENCIAS", "PAF1_MAT"
-  #   )
-  # ), 
+  B4 = unir_circular(
+    c(
+      "PAF1_MAT",
+      "GARIBALDI", "PROAE", "POLITECNICA", "CRECHE", "REITORIA_2", "ECONOMIA"
+    ),
+    c(
+      "RESIDENCIA1", "GRACA_R2", "POLITECNICA_VOLTA", "SAO_LAZARO", "ARQUITETURA",
+      "GEOCIENCIAS", "PAF1_MAT"
+    )
+  ),
   B5 = unir_circular(c(
     "GEOCIENCIAS_INTERNO",
     "FACOM", "PORTARIA", "CENTRO_ESPORTES", "PAF1_B1", "GARIBALDI", "PROAE",
@@ -189,32 +189,32 @@ criar_configuracoes_rotas <- function(noturno_sem_sao_lazaro = FALSE) {
       "07:40", "09:20", "11:00", "12:40", "14:20", "16:00", "17:40", "19:20", "21:00",
       "22:40"
     ), limite_noite = "19:20", limite_sab = "14:20"),
-    B3 = list(
-      full = c(
-        "06:40", "08:15", "09:50",
-        "11:25", "13:00", "14:35", "16:10", "17:45", "19:20", "20:55", "22:30"
-      ),
-      limite_noite = "17:45", limite_sab = "14:35"
-    ),
-    # B3 = list(full = c(
-    #   "06:30",
-    #   "07:40", "08:50", "10:00", "11:10", "12:20", "13:30", "14:40", "15:50", "17:00",
-    #   "18:10", "19:20", "20:30", "21:40", "22:50"
-    # ), limite_noite = "18:10", limite_sab = "14:40"),
-    B4 = list(
-      full = c(
-        "06:10", "07:40", "09:10", "10:40",
-        "12:10", "13:40", "15:10", "16:40", "18:10", "19:40", "21:10", "22:40"
-      ),
-      limite_noite = "19:40", limite_sab = "13:40"
-    ),
+    # B3 = list(
+    #   full = c(
+    #     "06:40", "08:15", "09:50",
+    #     "11:25", "13:00", "14:35", "16:10", "17:45", "19:20", "20:55", "22:30"
+    #   ),
+    #   limite_noite = "17:45", limite_sab = "14:35"
+    # ),
+    B3 = list(full = c(
+      "06:30",
+      "07:40", "08:50", "10:00", "11:10", "12:20", "13:30", "14:40", "15:50", "17:00",
+      "18:10", "19:20", "20:30", "21:40", "22:50"
+    ), limite_noite = "18:10", limite_sab = "14:40"),
     # B4 = list(
     #   full = c(
-    #     "06:00", "07:35", "09:10", "10:45", "12:20", "13:55",
-    #     "15:30", "17:05", "18:40", "20:15", "21:50"
-    #   ), limite_noite = "18:40",
-    #   limite_sab = "13:55"
-    # ), 
+    #     "06:10", "07:40", "09:10", "10:40",
+    #     "12:10", "13:40", "15:10", "16:40", "18:10", "19:40", "21:10", "22:40"
+    #   ),
+    #   limite_noite = "19:40", limite_sab = "13:40"
+    # ),
+    B4 = list(
+      full = c(
+        "06:00", "07:35", "09:10", "10:45", "12:20", "13:55",
+        "15:30", "17:05", "18:40", "20:15", "21:50"
+      ), limite_noite = "18:40",
+      limite_sab = "13:55"
+    ),
     B5 = list(
       full = c(
         "06:40", "08:15", "09:50",
@@ -224,11 +224,13 @@ criar_configuracoes_rotas <- function(noturno_sem_sao_lazaro = FALSE) {
     ),
     B6 = list(
       full = c(
-        "06:20", "07:30", "08:40",
-        "09:50", "11:00", "12:10", "13:20", "14:30", "15:40", "16:50", "18:00",
-        "19:10", "20:20", "21:30", "22:40"
+        "06:20", "06:50", "07:20",
+        "07:50", "08:20", "08:50", "09:20", "09:50", "10:20", "10:50", "11:20",
+        "11:50", "12:20", "12:50", "13:20", "13:50", "14:20", "14:50", "15:20",
+        "15:50", "16:20", "16:50", "17:20", "17:50", "18:20", "18:50", "19:20",
+        "19:50", "20:20", "20:50", "21:20", "21:50", "22:20"
       ),
-      limite_noite = "18:55", limite_sab = "14:20"
+      limite_noite = "18:50", limite_sab = "14:20"
     )
   )
 
