@@ -145,6 +145,25 @@ criar_dados_estaticos_gtfs <- function() {
 }
 ```
 
+As quilometragens das rotas e seus respectivos tempos foram calculados e podem ser
+vistos na tabela abaixo:
+
+| Rota | km Rota | km Seg. | km Ter. | km Qua. | km Qui. | km Sex. | km Sab. | km Semana | Tempo Rota
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| B1 | 14.7 km | 176.4 km | 176.4 km | 176.4 km | 176.4 km | 176.4 km | 88.2 km | 970.2 km | 29.3 min
+| B2 | 21.0 km | 231.0 km | 231.0 km | 231.0 km | 231.0 km | 231.0 km | 126.0 km | 1281.0 km | 45.6 min
+| B3 | 14.0 km | 210.0 km | 210.0 km | 210.0 km | 210.0 km | 210.0 km | 112.0 km | 1162.0 km | 23.7 min
+| B4 | 14.7 km | 191.1 km | 191.1 km | 191.1 km | 191.1 km | 191.1 km | 88.2 km | 1043.7 km | 28.4 min
+| B5 | 20.8 km | 228.8 km | 228.8 km | 228.8 km | 228.8 km | 228.8 km | 124.8 km | 1268.8 km | 50.4 min
+
+As quilometragens das rotas foram analisadas a partir de seus respecitivos 
+shapes, considerando apenas o trajeto da rota. A quilometragem de cada dia 
+semanal foi calculado de acordo com a distância que o ônibus percorreu durante 
+todo o dia. Consequentemente, a quilometragem semanal foi o resultado da soma 
+dos valores dos dias. Por fim, os tempos das rotas foram mensurados, 
+subtraindo os tempos das últimas paradas com as primeiras paradas, considerando
+cada rota.
+
 ### Sequências circulares e horários
 
 A função `criar_configuracoes_rotas()` cadastra, por linha, a sequência ordenada de paradas e os horários de partida. `unir_circular()` concatena os sentidos de ida e volta; quando os dois sentidos compartilham a parada de encontro, ela aparece uma única vez na junção. Os horários são definidos uma vez por rota e separados em três configurações:
