@@ -27,7 +27,7 @@ library(dplyr)
 library(leaflet)
 library(sf)
 
-feed_path <- file.path(diretorio_projeto, "data", "processed", "buzufba_gtfs.zip")
+feed_path <- file.path(diretorio_projeto, "data", "processed", "gtfs.zip")
 buildings_path <- file.path(diretorio_projeto, "data", "raw", "edificacoes_ufba.gpkg")
 output_path <- file.path(diretorio_projeto, "data", "processed", "animacao_buzufba.html")
 transit_type <- 3
@@ -65,8 +65,12 @@ step_sec <- 5
 trail_sec <- 20
 
 route_cols <- c(
-  B1 = "#E41A1C", B2 = "#377EB8", B3 = "#4DAF4A", B4 = "#984EA3",
-  B5 = "#FF7F00"
+  B1 = "#E41A1C", 
+  B2 = "#377EB8", 
+  B3 = "#4DAF4A", 
+  B4 = "#984EA3",
+  B5 = "#FF7F00",
+  B6 = "#FFFF00"
 )
 
 route_colors_js <- paste0(
@@ -147,25 +151,30 @@ pts <- bind_rows(lapply(split(trips_shapes, trips_shapes$trip_id), function(viag
   filter(start >= t0, start <= t1)
 
 ### 4) Criação do mapa interativo com timeline #####
-map <- leaflet() %>%
-  addTiles(
-    urlTemplate = paste0(
-      "https://{s}.basemaps.cartocdn.com/",
-      "light_all/{z}/{x}/{y}.png?key=",
-      "INSIRA_SUA_CHAVE_AQUI"
-    ),
-    attribution = paste0(
-      '&copy; <a href="https://www.openstreetmap.org/copyright">',
-      "OpenStreetMap</a>, ",
-      '&copy; <a href="https://carto.com/attributions">',
-      "CARTO</a>"
-    ),
-    options = tileOptions(
-      subdomains = "abcd",
-      maxZoom = 20
-    )
+map <- leaflet(options = leafletOptions(maxZoom = 23)) %>%
+  addProviderTiles(
+    providers$Esri.WorldGrayCanvas,
+    options = tileOptions(maxZoom = 23)
   ) %>%
   setView(lng = -38.510, lat = -12.999, zoom = 13)
+  # addTiles(
+  #   urlTemplate = paste0(
+  #     "https://{s}.basemaps.cartocdn.com/",
+  #     "light_all/{z}/{x}/{y}.png?key=",
+  #     "INSIRA_SUA_CHAVE_AQUI"
+  #   ),
+  #   attribution = paste0(
+  #     '&copy; <a href="https://www.openstreetmap.org/copyright">',
+  #     "OpenStreetMap</a>, ",
+  #     '&copy; <a href="https://carto.com/attributions">',
+  #     "CARTO</a>"
+  #   ),
+  #   options = tileOptions(
+  #     subdomains = "abcd",
+  #     maxZoom = 20
+  #   )
+  # ) %>%
+  # setView(lng = -38.510, lat = -12.999, zoom = 13)
 
 # Camada opcional das edificações. É adicionada antes das rotas para que
 # os traçados dos ônibus permaneçam visíveis por cima dos polígonos.
