@@ -176,7 +176,7 @@ gerar_gtfs <- function(
   )), data.table::rbindlist(purrr::map(trabalhos, "stop_times")), resultados$shapes)
   diretorio_saida <- file.path(diretorio_projeto, "data", "processed")
   dir.create(diretorio_saida, recursive = TRUE, showWarnings = FALSE)
-  caminho_saida <- file.path(diretorio_saida, "gtfs.zip")
+  caminho_saida <- file.path(diretorio_saida, "i2-rota_b6_gtfs.zip")
   gtfstools::write_gtfs(feed, caminho_saida)
   message("GTFS salvo em '", caminho_saida, "'.")
   invisible(feed)
