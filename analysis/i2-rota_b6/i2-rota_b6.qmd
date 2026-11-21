@@ -24,6 +24,13 @@ Esta análise avalia uma intervenção operacional no BUZUFBA: a inclusão de um
 
 O cenário de intervenção acrescenta a B6 ao serviço existente. As demais linhas, os pontos representativos das edificações e os dados de elevação foram mantidos como no cenário de referência. O itinerário da B6 também utiliza dois trechos viários que não faziam parte dos percursos das outras linhas considerados no modelo.
 
+Em relação a esses trechos, a nova rota utiliza o portão do Instituto de Geociências, que atualmente é fechado, e
+percorre um novo caminho para São Lázaro. Eles podem ser conferidos nas imagens abaixo.
+
+![Portão do IGEO](../../figures/portao_igeo.png){#fig-portao-igeo fig-cap="Localização do Portão do IGEO" width="100%"}
+
+![Nova Entrada para São Lázaro](../../figures/entrada_sao_lazaro.png){#fig-entrada-sao-lazaro fig-cap="Nova Entrada para São Lázaro" width="100%"}
+
 **Leitura inicial dos resultados:** os gráficos sugerem que a B6 amplia a acessibilidade potencial em até 30 minutos para diversas unidades, com destaque para destinos ligados aos eixos de São Lázaro e Ondina. No corte de 15 minutos, as mudanças são mais limitadas e, em vários casos, pequenas ou sobrepostas no gráfico. Os resultados devem ser entendidos como uma simulação de um horário e de uma janela específicos, não como uma medição da operação observada.
 
 # Contexto e objetivo
@@ -81,6 +88,15 @@ O padrão sugere que a B6 pode ampliar o conjunto de unidades acessíveis dentro
 ![Tempos totais medianos nos fluxos entre Ondina, Engenharia, Canela e Arquitetura.](../../figures/i2-rota_b6_tempo_viagem.png){#fig-b6-tempos fig-cap="Tempos totais medianos por fluxo, com caminhada e transporte público." width="100%"}
 
 O gráfico compara os fluxos de ida e volta entre Ondina e Engenharia, Ondina e Canela e Ondina e Arquitetura. Os pontos sobrepostos indicam que a B6 não provocou mudanças no tempo total de viagem. Isso é esperado, pois adicionar uma nova linha de ônibus não produz efeito no tempo de viagem em si, mas sim, na frequência de operação.
+
+## Quilometragens e tempo de viagem da nova rota
+
+Não obstante, também foram calculadas as quilometragens e tempo de viagem da rota B6.
+Esses dados foram agrupados e podem ser vistos na seguinte tabela abaixo:
+
+| Rota | km Rota | km Seg. | km Ter. | km Qua. | km Qui. | km Sex. | km Sab. | km Semana | Tempo Rota
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| B6 | 4.7 km | 155.1 km | 155.1 km | 155.1 km | 155.1 km | 155.1 km | 79.9 km | 855.4 km | 15.6 min
 
 # Discussão
 
