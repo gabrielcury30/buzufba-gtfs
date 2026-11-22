@@ -1,0 +1,113 @@
+---
+title: "Intervenção 2: inclusão da rota circular B6"
+author: "Gabriel Cury"
+date: today
+lang: pt-BR
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: cosmo
+    embed-resources: true
+    smooth-scroll: true
+    fig-align: center
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# Resumo
+
+Esta análise avalia uma intervenção operacional no BUZUFBA: a inclusão de uma nova linha circular, a **B6**, planejada para atender com maior frequência as regiões de São Lázaro, da Escola Politécnica e de Ondina. A proposta combina um percurso curto com partidas nominais a cada 30 minutos.
+
+O cenário de intervenção acrescenta a B6 ao serviço existente. As demais linhas, os pontos representativos das edificações e os dados de elevação foram mantidos como no cenário de referência. O itinerário da B6 também utiliza dois trechos viários que não faziam parte dos percursos das outras linhas considerados no modelo.
+
+Em relação a esses trechos, a nova rota utiliza o portão do Instituto de Geociências, que atualmente é fechado, e
+percorre um novo caminho para São Lázaro. Eles podem ser conferidos nas imagens abaixo.
+
+![Portão do IGEO](../../figures/portao_igeo.png){#fig-portao-igeo fig-cap="Localização do Portão do IGEO" width="100%"}
+
+![Nova Entrada para São Lázaro](../../figures/entrada_sao_lazaro.png){#fig-entrada-sao-lazaro fig-cap="Nova Entrada para São Lázaro" width="100%"}
+
+**Leitura inicial dos resultados:** os gráficos sugerem que a B6 amplia a acessibilidade potencial em até 30 minutos para diversas unidades, com destaque para destinos ligados aos eixos de São Lázaro e Ondina. No corte de 15 minutos, as mudanças são mais limitadas e, em vários casos, pequenas ou sobrepostas no gráfico. Os resultados devem ser entendidos como uma simulação de um horário e de uma janela específicos, não como uma medição da operação observada.
+
+# Contexto e objetivo
+
+As linhas existentes atendem a diferentes setores do campus, mas os trajetos mais extensos e os intervalos entre partidas podem dificultar deslocamentos curtos entre áreas próximas, em especial entre São Lázaro, a Escola Politécnica e Ondina. A intervenção testada foi desenhada para oferecer uma ligação circular mais direta e frequente para esse conjunto de áreas.
+
+O objetivo é comparar a acessibilidade potencial entre as unidades da UFBA antes e depois da inclusão da B6 e observar o que ocorre com alguns tempos de viagem representativos. A pergunta principal é se a nova linha facilita alcançar outras unidades dentro de limites de tempo curtos, sem alterações simultâneas nas demais linhas ou na localização das edificações representadas.
+
+# Descrição da intervenção
+
+A B6 foi adicionada como uma nova linha circular, mantendo as linhas B1 a B5 sem alterações. No itinerário modelado, a linha conecta pontos associados a São Lázaro, Politécnica, PROAE, Arquitetura, Geociências, Facom, Portaria Principal e Centro de Esportes, retornando a São Lázaro.
+
+O quadro horário configurado no modelo prevê partidas a cada 30 minutos, das 06h20 às 22h20 nos dias de operação considerados. Essa frequência é nominal: ela descreve as partidas incluídas no GTFS e não representa uma estimativa de regularidade ou de espera real em cada parada.
+
+![Nova Rota B6](../../figures/i2-rota_b6.png){#fig-b6 fig-cap="Representação da Nova Rota B6" width="100%"}
+
+Assim, a comparação estima o efeito combinado da presença da B6 e de seus trechos de percurso sobre as viagens calculadas. Ela não testa mudanças de localização, fechamento ou reconfiguração de outras linhas.
+
+# Metodologia
+
+## Dados e comparação
+
+O cenário atual e o cenário de intervenção foram representados em GTFS e avaliados sobre a rede viária e os dados de elevação usados pelo projeto. O conjunto de edificações foi mantido constante entre os cenários, o que permite comparar as mesmas origens e destinos. A principal diferença operacional configurada é a inclusão da B6 no cenário de intervenção.
+
+Os tempos foram calculados entre pontos representativos das unidades por meio do `r5r`, considerando caminhada e transporte público. A configuração permite no máximo uma viagem de transporte público (`max_rides = 1`); por isso, o resultado não representa itinerários que dependam de integração entre ônibus. O modelo também pode considerar deslocamentos feitos somente a pé.
+
+## Indicadores
+
+Para cada unidade de origem, a acessibilidade corresponde ao percentual de **outras unidades** alcançáveis em até 15 ou 30 minutos. A unidade de origem não entra na contagem. Cada unidade de destino recebe o mesmo peso, independentemente de sua área construída, quantidade de estudantes ou número de viagens realizadas.
+
+As simulações usam partidas a partir de **13/10/2026 às 08h50**, uma janela de partidas de 60 minutos e a mediana dos tempos calculados. Os gráficos de acessibilidade mostram os valores do cenário atual e da intervenção; diferenças positivas indicam aumento do percentual de unidades alcançáveis, e diferenças negativas indicariam redução. Quando os pontos aparecem muito próximos ou sobrepostos, a variação é pequena na escala apresentada.
+
+O gráfico de tempo total resume, pela mediana, os tempos elegíveis para seis deslocamentos direcionais entre pontos representativos de Ondina (PAF I), Engenharia (Escola Politécnica), Canela (PAC) e Arquitetura. Esse indicador inclui caminhada e transporte público, admite no máximo uma viagem de transporte e considera viagens de até 120 minutos. Um ponto ausente significa que não houve viagem elegível dentro dos parâmetros daquele cenário; não deve ser interpretado como tempo zero.
+
+# Resultados
+
+## Acessibilidade em até 15 minutos
+
+![Comparação do percentual de outras unidades alcançáveis em até 15 minutos.](../../figures/i2-rota_b6_acessibilidade_15min.png){#fig-b6-15min fig-cap="Acessibilidade potencial em até 15 minutos: cenário atual e cenário com a B6." width="100%"}
+
+No limite de 15 minutos, o gráfico mostra que quase não houve ganhos. Para parte das unidades, os valores dos dois cenários aparecem próximos ou sobrepostos, indicando que a inclusão da B6 não altera de forma visível a quantidade de destinos alcançáveis nesse corte mais restrito. A Escola Politécnica é um dos pontos em que a comparação aparece com os dois valores e uma diferença discreta.
+
+Esse resultado é compatível com uma linha curta que melhora conexões locais, mas cujo efeito em 15 minutos depende da proximidade entre os pontos, do horário das partidas e do tempo de caminhada até os pontos de embarque. A leitura do gráfico deve ser feita unidade a unidade; o percentual não informa quantas pessoas efetivamente utilizam cada origem ou destino.
+
+## Acessibilidade em até 30 minutos
+
+![Comparação do percentual de outras unidades alcançáveis em até 30 minutos.](../../figures/i2-rota_b6_acessibilidade_30min.png){#fig-b6-30min fig-cap="Acessibilidade potencial em até 30 minutos: cenário atual e cenário com a B6." width="100%"}
+
+No limite de 30 minutos, as diferenças favoráveis ficam mais visíveis em algumas unidades. O gráfico apresenta deslocamentos para percentuais maiores para origens como o Pavilhão de Aulas de São Lázaro, o Instituto de Psicologia e a Biblioteca Universitária Isaías Alves, entre outras. Em alguns casos, a mudança é mais expressiva; em outros, os cenários permanecem próximos.
+
+O padrão sugere que a B6 pode ampliar o conjunto de unidades acessíveis dentro de meia hora, possivelmente porque a maior frequência reduz a espera modelada e porque o percurso conecta áreas atendidas por diferentes trechos do campus. A leitura é coerente com a finalidade proposta para a linha: reforçar conexões curtas em torno de São Lázaro, Politécnica e Ondina. Ainda assim, o indicador mede acessibilidade entre pontos representativos e não cobertura de toda a população ou demanda real.
+
+## Tempos totais em fluxos selecionados
+
+![Tempos totais medianos nos fluxos entre Ondina, Engenharia, Canela e Arquitetura.](../../figures/i2-rota_b6_tempo_viagem.png){#fig-b6-tempos fig-cap="Tempos totais medianos por fluxo, com caminhada e transporte público." width="100%"}
+
+O gráfico compara os fluxos de ida e volta entre Ondina e Engenharia, Ondina e Canela e Ondina e Arquitetura. Os pontos sobrepostos indicam que a B6 não provocou mudanças no tempo total de viagem. Isso é esperado, pois adicionar uma nova linha de ônibus não produz efeito no tempo de viagem em si, mas sim, na frequência de operação.
+
+## Quilometragens e tempo de viagem da nova rota
+
+Não obstante, também foram calculadas as quilometragens e tempo de viagem da rota B6.
+Esses dados foram agrupados e podem ser vistos na seguinte tabela abaixo:
+
+| Rota | km Rota | km Seg. | km Ter. | km Qua. | km Qui. | km Sex. | km Sab. | km Semana | Tempo Rota
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| B6 | 4.7 km | 155.1 km | 155.1 km | 155.1 km | 155.1 km | 155.1 km | 79.9 km | 855.4 km | 15.6 min
+
+# Discussão
+
+O principal mérito operacional da proposta é testar uma ligação adicional sem retirar atendimento das linhas existentes. Isso torna a intervenção particularmente pertinente como experimento de reforço: se a B6 trouxer ganhos, eles decorrem da nova oferta e do seu percurso, e não de uma redistribuição direta dos itinerários de B1 a B5. Os dois trechos viários novos também ampliam as opções de circulação representadas no modelo e podem ser relevantes para a conexão entre os setores atendidos.
+
+A comparação visual sugere benefícios mais claros no horizonte de 30 minutos do que no de 15 minutos. Isso pode indicar que a linha ajuda a conectar origens e destinos que, apesar de próximos em escala de campus, não eram alcançáveis com rapidez no cenário de referência. O resultado merece atenção especial para as áreas explicitamente visadas pela proposta.
+
+Também é importante considerar limites do exercício. A frequência representada é um horário planejado, os pontos de origem e destino resumem edificações inteiras, a análise usa apenas uma data e janela de partida e não permite integração entre duas viagens de transporte. Os tempos estimados dependem da rede viária, dos dados de GTFS e das hipóteses do modelo. Além disso, estes gráficos não incorporam volume de passageiros, capacidade dos veículos, congestionamento observado, regularidade, acessibilidade universal dos pontos ou custo operacional da nova linha.
+
+# Conclusão
+
+A inclusão da B6 foi testada como uma intervenção incremental: uma linha circular curta e com partidas nominais a cada 30 minutos, somada à rede existente e com as edificações mantidas no mesmo lugar. A leitura inicial dos gráficos indica ampliação da acessibilidade em até 30 minutos para diversas unidades, enquanto os efeitos no limite de 15 minutos são quase inexistentes. Os tempos de viagem selecionados acrescentam informação sobre fluxos específicos, mas precisam ser lidos considerando a disponibilidade de observações e os componentes de caminhada e espera.
+
+Em conjunto, os resultados dão suporte à hipótese de que uma rota mais frequente pode melhorar conexões internas entre São Lázaro, Politécnica e Ondina sem alterar as demais linhas. A conclusão é exploratória e deve ser complementada com a conferência dos tempos e diferenças numéricas, a validação do percurso em campo, a demanda por horário e uma avaliação da operação real antes de recomendar a implantação permanente.

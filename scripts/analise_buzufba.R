@@ -93,7 +93,8 @@ caminhos_edificacoes <- c(
     diretorio_projeto, "data", "raw", "edificacoes_ufba.gpkg"
   ),
   Intervencao = file.path(
-    diretorio_projeto, "data", "raw", "intervencoes_edificacoes_ufba.gpkg"
+    diretorio_projeto, "data", "raw", "edificacoes_ufba.gpkg"
+    # diretorio_projeto, "data", "raw", "intervencoes_edificacoes_ufba.gpkg"
   )
 )
 
