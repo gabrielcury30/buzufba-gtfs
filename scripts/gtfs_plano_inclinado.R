@@ -176,21 +176,29 @@ gerar_gtfs_plano_inclinado <- function() {
   viagens <- list(
     criar_viagens("DIAS_UTEIS", inicio_dias_uteis, fim_dias_uteis,
       0L, intervalo_saida_segundos, 0L,
-      c("POLITECNICA", "ONDINA"), shape_id),
+      paradas$stop_id, shape_id),
     criar_viagens("DIAS_UTEIS", inicio_dias_uteis, fim_dias_uteis,
       tempo_viagem_segundos + tempo_terminal_segundos,
       intervalo_saida_segundos, 1L,
-      c("ONDINA", "POLITECNICA"), paste0(shape_id, "_VOLTA")),
+      rev(paradas$stop_id), paste0(shape_id, "_VOLTA")),
     criar_viagens("SABADO", inicio_sabado, fim_sabado,
       0L, intervalo_saida_segundos, 0L,
-      c("POLITECNICA", "ONDINA"), shape_id),
+      paradas$stop_id, shape_id),
     criar_viagens("SABADO", inicio_sabado, fim_sabado,
       tempo_viagem_segundos + tempo_terminal_segundos,
       intervalo_saida_segundos, 1L,
-      c("ONDINA", "POLITECNICA"), paste0(shape_id, "_VOLTA"))
+      rev(paradas$stop_id), paste0(shape_id, "_VOLTA"))
   )
   trips <- do.call(rbind, lapply(viagens, `[[`, "trips"))
   stop_times <- do.call(rbind, lapply(viagens, `[[`, "stop_times"))
+  paradas_nao_cadastradas <- setdiff(unique(stop_times$stop_id), paradas$stop_id)
+  if (length(paradas_nao_cadastradas) > 0L) {
+    stop(
+      "stop_times referencia stop_id ausente em stops: ",
+      paste(paradas_nao_cadastradas, collapse = ", "),
+      call. = FALSE
+    )
+  }
 
   data_inicio <- format(data_inicio_feed, "%Y%m%d")
   data_fim <- format(data_fim_feed, "%Y%m%d")
