@@ -40,8 +40,8 @@ paradas <- data.frame(
 
 shape_id <- "PLANO_INCLINADO_UFBA"
 shape_ida <- data.frame(
-  shape_pt_lat = c(NA_real_),
-  shape_pt_lon = c(NA_real_),
+  shape_pt_lat = c(-12.99971342, -12.99989183, -13.00018100, -13.00042613, -13.00065868),
+  shape_pt_lon = c(-38.50956185, -38.50945563, -38.50928289, -38.50914029, -38.50900175),
   stringsAsFactors = FALSE
 )
 
