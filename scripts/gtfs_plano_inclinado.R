@@ -68,9 +68,9 @@ fim_dias_uteis <- "22:40:00"
 inicio_sabado <- "06:30:00"
 fim_sabado <- "15:00:00"
 
-# Janela de validade editável do calendário GTFS: hoje até um ano à frente.
-data_inicio_feed <- Sys.Date()
-data_fim_feed <- data_inicio_feed + 365
+# Janela de validade do calendário GTFS.
+data_inicio_feed <- as.Date("2026-01-01")
+data_fim_feed <- as.Date("2026-12-31")
 
 # -----------------------------------------------------------------------------
 # Geração do feed
